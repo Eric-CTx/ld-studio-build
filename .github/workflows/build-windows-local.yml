@@ -32,13 +32,6 @@ jobs:
         shell: pwsh
         run: '"BUILD_STARTED=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV'
 
-      - name: 检查打包脚本
-        run: node --test scripts/bundle-gpui.test.mjs scripts/prepare-gpui-dependency.test.mjs
-
-      - name: 检查免安装包组装逻辑
-        shell: pwsh
-        run: ./scripts/package-windows-local.test.ps1
-
       - name: 配置根工作区 Rust
         uses: dtolnay/rust-toolchain@1.88.0
         with:
@@ -58,6 +51,13 @@ jobs:
             apps/desktop-gpui -> target
 
       - uses: ./.github/actions/setup-js
+
+      - name: 检查打包脚本
+        run: node --test scripts/bundle-gpui.test.mjs scripts/prepare-gpui-dependency.test.mjs
+
+      - name: 检查免安装包组装逻辑
+        shell: pwsh
+        run: ./scripts/package-windows-local.test.ps1
 
       - name: 生成无密钥的构建配置
         shell: pwsh
