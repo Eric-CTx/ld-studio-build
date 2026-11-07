@@ -1,0 +1,128 @@
+name: Windows 本地版基线构建
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [lingdong-local-cn]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-local-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUST_TARGET_TRIPLE: x86_64-pc-windows-msvc
+      CAP_GPUI_RUST_TOOLCHAIN: 1.95.0
+      CARGO_PROFILE_RELEASE_DEBUG: "0"
+      CARGO_PROFILE_RELEASE_STRIP: symbols
+      CI: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 记录开始时间
+        shell: pwsh
+        run: '"BUILD_STARTED=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV'
+
+      - name: 检查打包脚本
+        run: node --test scripts/bundle-gpui.test.mjs scripts/prepare-gpui-dependency.test.mjs
+
+      - name: 检查免安装包组装逻辑
+        shell: pwsh
+        run: ./scripts/package-windows-local.test.ps1
+
+      - name: 配置根工作区 Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: 配置 GPUI Rust
+        run: rustup toolchain install "$CAP_GPUI_RUST_TOOLCHAIN" --profile minimal --target "$RUST_TARGET_TRIPLE"
+
+      - uses: ./.github/actions/setup-rust-cache
+        with:
+          target: x86_64-pc-windows-msvc
+          prefix-key: v1-lingdong-windows-release
+          save-cache: "true"
+          cache-on-failure: "true"
+          workspaces: |
+            . -> target
+            apps/desktop-gpui -> target
+
+      - uses: ./.github/actions/setup-js
+
+      - name: 生成无密钥的构建配置
+        shell: pwsh
+        run: |
+          @(
+            'VITE_ENVIRONMENT=production'
+            'NEXT_PUBLIC_WEB_URL=https://cap.so'
+            'NEXTAUTH_URL=https://cap.so'
+            'VITE_SERVER_URL=https://cap.so'
+            'RUST_TARGET_TRIPLE=x86_64-pc-windows-msvc'
+          ) | Set-Content -LiteralPath .env -Encoding utf8
+
+      - name: 配置 Windows 原生依赖
+        run: bun run cap-setup
+
+      - name: 扩容页面文件
+        uses: al-cheb/configure-pagefile-action@a3b6ebd6b634da88790d9c58d4b37a7f4a7b8708
+        with:
+          minimum-size: 16GB
+          maximum-size: 24GB
+          disk-root: "D:"
+
+      - name: 编译内置组件
+        run: ./scripts/build-desktop-binaries.sh "$RUST_TARGET_TRIPLE"
+
+      - name: 编译并打包未签名 NSIS
+        run: >-
+          node scripts/bundle-gpui.mjs "$RUST_TARGET_TRIPLE" --bundles nsis
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: 从 NSIS 载荷组装并验证免安装包
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem "apps/desktop-gpui/target/$env:RUST_TARGET_TRIPLE/release/bundle/nsis/*.exe")
+          if ($installers.Count -ne 1) { throw "预期一个 NSIS 安装包，实际为 $($installers.Count)" }
+          ./scripts/package-windows-local.ps1 -InstallerPath $installers[0].FullName -OutputDirectory "$env:RUNNER_TEMP/lingdong-delivery"
+
+      - name: 上传安装版
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-local-installer
+          path: ${{ runner.temp }}/lingdong-delivery/灵动录屏_安装版.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: 上传免安装版及校验清单
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-local-portable
+          path: |
+            ${{ runner.temp }}/lingdong-delivery/灵动录屏_免安装版.zip
+            ${{ runner.temp }}/lingdong-delivery/构建校验.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: 记录结果与耗时
+        if: always()
+        shell: pwsh
+        run: |
+          $seconds = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$env:BUILD_STARTED
+          @(
+            "提交：$env:GITHUB_SHA"
+            "构建步骤状态：${{ job.status }}"
+            "总耗时（不含排队与缓存保存）：$seconds 秒"
+            "Rust 缓存恢复、保存结果请查看 setup-rust-cache 步骤及任务末尾日志。"
+          ) >> $env:GITHUB_STEP_SUMMARY
