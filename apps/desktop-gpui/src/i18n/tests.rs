@@ -9,7 +9,7 @@ fn english_is_the_default_locale() {
 
 #[test]
 fn english_matches_the_literals_it_replaced() {
-    let app_name = crate::menus::APP_NAME;
+    let app_name = "Cap";
     let pairs: &[(&str, String)] = &[
         (tr::common::add(), "Add".into()),
         (tr::common::cancel(), "Cancel".into()),

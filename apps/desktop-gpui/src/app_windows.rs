@@ -1259,7 +1259,7 @@ pub fn open_settings(page: Page, cx: &mut App) {
             // repositions them. (The main window returns `None` there and
             // hand-draws its own.)
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Settings".into()),
+                title: Some("灵动录屏设置".into()),
                 appears_transparent: true,
                 traffic_light_position: Some(settings_window::TRAFFIC_LIGHTS),
             }),
@@ -1445,7 +1445,7 @@ pub fn open_onboarding(cx: &mut App) {
             ..Default::default()
         },
         |window, cx| {
-            window.set_window_title("Welcome to Cap");
+            window.set_window_title("欢迎使用灵动录屏");
             cx.new(|cx| OnboardingWindow::new(window, cx))
         },
     );
@@ -1595,7 +1595,7 @@ pub fn open_mode_select(cx: &mut App) -> bool {
             // puts them and only the title is hidden (`hidden_title(true)` +
             // `TitleBarStyle::Overlay`).
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Mode Selection".into()),
+                title: Some("灵动录屏模式选择".into()),
                 appears_transparent: true,
                 traffic_light_position: mode_select_window::TRAFFIC_LIGHTS,
             }),
@@ -1716,7 +1716,7 @@ pub fn open_teleprompter(cx: &mut App) {
             // true`, `trafficLightPosition: (14, 14)` -- the real AppKit
             // buttons, moved, as on the settings window.
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Teleprompter".into()),
+                title: Some("灵动录屏提词器".into()),
                 appears_transparent: true,
                 traffic_light_position: Some(teleprompter_window::TRAFFIC_LIGHTS),
             }),
@@ -2830,16 +2830,16 @@ impl OwnWindow {
 
     pub fn title(self) -> &'static str {
         match self {
-            Self::Main => "Cap",
-            Self::Settings => "Cap Settings",
-            Self::Controls => "Cap Recording Controls",
-            Self::Camera => "Cap Camera",
-            Self::ModeSelect => "Cap Mode Selection",
-            Self::Teleprompter => "Cap Teleprompter",
-            Self::TargetSelect => "Cap Target Select",
-            Self::Editor => "Cap Editor",
-            Self::ScreenshotEditor => "Cap Screenshot Editor",
-            Self::Onboarding => "Welcome to Cap",
+            Self::Main => "灵动录屏",
+            Self::Settings => "灵动录屏设置",
+            Self::Controls => "灵动录屏录制控制",
+            Self::Camera => "灵动录屏摄像头",
+            Self::ModeSelect => "灵动录屏模式选择",
+            Self::Teleprompter => "灵动录屏提词器",
+            Self::TargetSelect => "灵动录屏目标选择",
+            Self::Editor => "灵动录屏编辑器",
+            Self::ScreenshotEditor => "灵动录屏截图编辑器",
+            Self::Onboarding => "欢迎使用灵动录屏",
         }
     }
 }
@@ -4207,7 +4207,7 @@ pub fn open_camera_window(cx: &mut App) {
             titlebar: None,
             #[cfg(target_os = "linux")]
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Camera".into()),
+                title: Some("灵动录屏摄像头".into()),
                 ..Default::default()
             }),
             #[cfg(target_os = "linux")]
@@ -5163,7 +5163,7 @@ fn open_editor_window(
             // `Some(Some(LogicalPosition::new(20.0, 32.0)))`, and the header's
             // left group reserves an `h-full w-16` spacer for them.
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Editor".into()),
+                title: Some("灵动录屏编辑器".into()),
                 appears_transparent: true,
                 traffic_light_position: editor_window::TRAFFIC_LIGHTS,
             }),
@@ -6582,7 +6582,7 @@ pub(crate) fn request_editor_deletion(
             platform::alert_dialog(tr::dialog::delete_recording::retained_title(), &error);
             return;
         }
-        if !platform::confirm_dialog("Cap", tr::main::delete_recording_confirm(), tr::common::yes(), tr::common::no(), false) {
+        if !platform::confirm_dialog("灵动录屏", tr::main::delete_recording_confirm(), tr::common::yes(), tr::common::no(), false) {
             return;
         }
         let prepared = cx.update(|cx| {
@@ -7226,7 +7226,7 @@ pub fn open_screenshot_editor(path: PathBuf, cx: &mut App) {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             display_id,
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Cap Screenshot Editor".into()),
+                title: Some("灵动录屏截图编辑器".into()),
                 appears_transparent: true,
                 traffic_light_position: None,
             }),
@@ -8412,16 +8412,16 @@ mod tests {
     #[test]
     fn own_window_titles_match_cap_window_id() {
         let expected = [
-            (OwnWindow::Main, "Cap"),
-            (OwnWindow::Settings, "Cap Settings"),
-            (OwnWindow::Controls, "Cap Recording Controls"),
-            (OwnWindow::Camera, "Cap Camera"),
-            (OwnWindow::ModeSelect, "Cap Mode Selection"),
-            (OwnWindow::Teleprompter, "Cap Teleprompter"),
-            (OwnWindow::TargetSelect, "Cap Target Select"),
-            (OwnWindow::Editor, "Cap Editor"),
-            (OwnWindow::ScreenshotEditor, "Cap Screenshot Editor"),
-            (OwnWindow::Onboarding, "Welcome to Cap"),
+            (OwnWindow::Main, "灵动录屏"),
+            (OwnWindow::Settings, "灵动录屏设置"),
+            (OwnWindow::Controls, "灵动录屏录制控制"),
+            (OwnWindow::Camera, "灵动录屏摄像头"),
+            (OwnWindow::ModeSelect, "灵动录屏模式选择"),
+            (OwnWindow::Teleprompter, "灵动录屏提词器"),
+            (OwnWindow::TargetSelect, "灵动录屏目标选择"),
+            (OwnWindow::Editor, "灵动录屏编辑器"),
+            (OwnWindow::ScreenshotEditor, "灵动录屏截图编辑器"),
+            (OwnWindow::Onboarding, "欢迎使用灵动录屏"),
         ];
         assert_eq!(OwnWindow::ALL.len(), expected.len());
         for (kind, title) in expected {
@@ -8433,7 +8433,7 @@ mod tests {
     /// How the table lines up with `DEFAULT_EXCLUDED_WINDOW_TITLES`
     /// (`general_settings.rs:104-114`): the defaults name three windows this
     /// app does not have, and four of ours are deliberately not in the defaults
-    /// -- "Cap Target Select" carries a comment over there explaining why it
+    /// -- "灵动录屏目标选择" carries a comment over there explaining why it
     /// must not be added (a Windows ghost-overlay bug), and the editors and
     /// onboarding are simply not excluded by default.
     #[test]
@@ -8447,12 +8447,12 @@ mod tests {
         assert_eq!(
             shared,
             vec![
-                &"Cap",
-                &"Cap Settings",
-                &"Cap Recording Controls",
-                &"Cap Camera",
-                &"Cap Mode Selection",
-                &"Cap Teleprompter",
+                &"灵动录屏",
+                &"灵动录屏设置",
+                &"灵动录屏录制控制",
+                &"灵动录屏摄像头",
+                &"灵动录屏模式选择",
+                &"灵动录屏提词器",
             ]
         );
 
@@ -8523,15 +8523,15 @@ mod tests {
     #[test]
     fn the_teleprompter_rule_is_always_present_and_never_duplicated() {
         let from_nothing = own_window_exclusion_rules(Vec::new(), RecordingMode::Instant);
-        assert_eq!(from_nothing, vec![title_rule("Cap Teleprompter")]);
+        assert_eq!(from_nothing, vec![title_rule("灵动录屏提词器")]);
         assert_eq!(
             excluded_own_windows(&from_nothing),
             vec![OwnWindow::Teleprompter]
         );
 
         let already_configured =
-            own_window_exclusion_rules(vec![title_rule("Cap Teleprompter")], RecordingMode::Studio);
-        assert_eq!(already_configured, vec![title_rule("Cap Teleprompter")]);
+            own_window_exclusion_rules(vec![title_rule("灵动录屏提词器")], RecordingMode::Studio);
+        assert_eq!(already_configured, vec![title_rule("灵动录屏提词器")]);
     }
 
     /// Our own windows are matched on title *alone*

@@ -1902,9 +1902,10 @@ impl SettingsWindow {
                         window.start_window_move();
                     }),
             )
-            .child(self.render_profile(cx))
+            // 纯本地版隐藏账户界面，保留底层登录流程。
+            .when(false, |sidebar| sidebar.child(self.render_profile(cx)))
             .child(self.render_nav(cx))
-            .child(self.render_account(cx))
+            .when(false, |sidebar| sidebar.child(self.render_account(cx)))
     }
 
     fn render_profile(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -2644,53 +2645,59 @@ impl SettingsWindow {
             .flex_wrap()
             .items_center()
             .gap(px(12.))
-            .children(RecordingsTab::ALL.iter().copied().map(|tab| {
-                let selected = tab == active;
-                div()
-                    .id(SharedString::from(tab.id()))
-                    // `flex gap-1.5 items-center p-2 px-3 border rounded-full`
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(6.))
-                    .py(px(8.))
-                    .px(px(12.))
-                    .rounded_full()
-                    .border_1()
-                    // `border-gray-5` on both states, remapped to the settings
-                    // border by the material.
-                    .border_color(theme.settings_border())
-                    .map(|this| {
-                        if selected {
-                            // `bg-gray-5 cursor-default`
-                            this.bg(theme.settings_fill()).cursor_default()
-                        } else {
-                            // `bg-transparent hover:bg-gray-3`
-                            this.cursor_pointer()
-                                .hover(|style| style.bg(theme.settings_fill()))
-                        }
-                    })
-                    // `size-3`, and `invert dark:invert-0` -- a dark glyph on
-                    // the light theme and a light one on the dark, which is
-                    // what the page's own text colour already is.
-                    .children(tab.icon().map(|icon| {
-                        svg()
-                            .path(icon)
-                            .size(px(12.))
-                            .flex_shrink_0()
-                            .text_color(theme.settings_text())
-                    }))
-                    // `text-xs text-gray-12`
-                    .child(div().text_size(px(12.)).child(tab.label()))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.recordings.tab = tab;
-                        // `createEffect(() => { activeTab(); ...
-                        //  setVisibleCount(PAGE_SIZE) })`
-                        this.recordings.visible_count = RECORDINGS_PAGE_SIZE;
-                        this.decode_visible_recordings(window, cx);
-                        cx.notify();
-                    }))
-            }));
+            .children(
+                RecordingsTab::ALL
+                    .iter()
+                    .copied()
+                    .filter(|tab| *tab != RecordingsTab::Instant)
+                    .map(|tab| {
+                        let selected = tab == active;
+                        div()
+                            .id(SharedString::from(tab.id()))
+                            // `flex gap-1.5 items-center p-2 px-3 border rounded-full`
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(px(6.))
+                            .py(px(8.))
+                            .px(px(12.))
+                            .rounded_full()
+                            .border_1()
+                            // `border-gray-5` on both states, remapped to the settings
+                            // border by the material.
+                            .border_color(theme.settings_border())
+                            .map(|this| {
+                                if selected {
+                                    // `bg-gray-5 cursor-default`
+                                    this.bg(theme.settings_fill()).cursor_default()
+                                } else {
+                                    // `bg-transparent hover:bg-gray-3`
+                                    this.cursor_pointer()
+                                        .hover(|style| style.bg(theme.settings_fill()))
+                                }
+                            })
+                            // `size-3`, and `invert dark:invert-0` -- a dark glyph on
+                            // the light theme and a light one on the dark, which is
+                            // what the page's own text colour already is.
+                            .children(tab.icon().map(|icon| {
+                                svg()
+                                    .path(icon)
+                                    .size(px(12.))
+                                    .flex_shrink_0()
+                                    .text_color(theme.settings_text())
+                            }))
+                            // `text-xs text-gray-12`
+                            .child(div().text_size(px(12.)).child(tab.label()))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.recordings.tab = tab;
+                                // `createEffect(() => { activeTab(); ...
+                                //  setVisibleCount(PAGE_SIZE) })`
+                                this.recordings.visible_count = RECORDINGS_PAGE_SIZE;
+                                this.decode_visible_recordings(window, cx);
+                                cx.notify();
+                            }))
+                    }),
+            );
 
         // `relative w-full max-w-[260px] h-[36px] flex items-center` with the
         // magnifier absolutely placed at `left-2` and the input padded past it.
@@ -3331,41 +3338,45 @@ impl SettingsWindow {
     }
 
     fn render_recording_quality(&self, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
-        vec![
-            self.render_studio_quality(cx).into_any_element(),
-            self.render_instant_quality(cx).into_any_element(),
-            self.section(
-                tr::settings::quality::sharing::title(),
-                None,
-                None,
-                vec![
-                    self.rows(vec![
-                        self.setting_row(
-                            tr::settings::quality::sharing::auto_open(),
-                            Some(tr::settings::quality::sharing::auto_open_description()),
-                            self.toggle(
-                                "auto-open-links",
+        if false {
+            vec![
+                self.render_studio_quality(cx).into_any_element(),
+                self.render_instant_quality(cx).into_any_element(),
+                self.section(
+                    tr::settings::quality::sharing::title(),
+                    None,
+                    None,
+                    vec![
+                        self.rows(vec![
+                            self.setting_row(
                                 tr::settings::quality::sharing::auto_open(),
-                                !self.settings.disable_auto_open_links,
-                                cx,
-                                |this, cx| {
-                                    this.settings.disable_auto_open_links =
-                                        !this.settings.disable_auto_open_links;
-                                    this.write_bool(
-                                        "disableAutoOpenLinks",
-                                        this.settings.disable_auto_open_links,
-                                        cx,
-                                    );
-                                },
-                            )
-                            .into_any_element(),
-                        ),
-                    ])
-                    .into_any_element(),
-                ],
-            )
-            .into_any_element(),
-        ]
+                                Some(tr::settings::quality::sharing::auto_open_description()),
+                                self.toggle(
+                                    "auto-open-links",
+                                    tr::settings::quality::sharing::auto_open(),
+                                    !self.settings.disable_auto_open_links,
+                                    cx,
+                                    |this, cx| {
+                                        this.settings.disable_auto_open_links =
+                                            !this.settings.disable_auto_open_links;
+                                        this.write_bool(
+                                            "disableAutoOpenLinks",
+                                            this.settings.disable_auto_open_links,
+                                            cx,
+                                        );
+                                    },
+                                )
+                                .into_any_element(),
+                            ),
+                        ])
+                        .into_any_element(),
+                    ],
+                )
+                .into_any_element(),
+            ]
+        } else {
+            vec![self.render_studio_quality(cx).into_any_element()]
+        }
     }
 
     fn effective_instant_resolution(&self) -> u32 {
@@ -3697,23 +3708,6 @@ impl SettingsWindow {
                             settings.post_deletion_behaviour.label(),
                             MenuKind::PostDeletion,
                             cx,
-                        )
-                        .into_any_element(),
-                    ),
-                    self.setting_row(
-                        tr::settings::general::recording::delete_after_upload::label(),
-                        Some(tr::settings::general::recording::delete_after_upload::description()),
-                        self.toggle(
-                            "delete-after-upload",
-                            tr::settings::general::recording::delete_after_upload::label(),
-                            settings.delete_instant_recordings_after_upload,
-                            cx,
-                            |this, cx| {
-                                this.settings.delete_instant_recordings_after_upload =
-                                    !this.settings.delete_instant_recordings_after_upload;
-                                let value = this.settings.delete_instant_recordings_after_upload;
-                                this.write_bool("deleteInstantRecordingsAfterUpload", value, cx);
-                            },
                         )
                         .into_any_element(),
                     ),
@@ -4913,7 +4907,10 @@ mod tests {
             image_url: None,
         };
 
-        assert_eq!(account_name(false, Some(&profile)), "Click to sign in");
+        assert_eq!(
+            account_name(false, Some(&profile)),
+            tr::settings::sidebar::click_to_sign_in()
+        );
         assert_eq!(account_name(true, None), "Signed in");
         assert_eq!(account_name(true, Some(&profile)), "Taylor Example");
 

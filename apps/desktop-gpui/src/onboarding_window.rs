@@ -113,7 +113,6 @@ const WELCOME_ENTRANCE_SECS: f32 = 3.4;
 enum Step {
     Permissions,
     Overview,
-    Instant,
     Studio,
     Screenshot,
     Toggle,
@@ -126,10 +125,9 @@ fn guided_permission(permission: OSPermission) -> bool {
 }
 
 impl Step {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 7] = [
         Self::Permissions,
         Self::Overview,
-        Self::Instant,
         Self::Studio,
         Self::Screenshot,
         Self::Toggle,
@@ -161,7 +159,6 @@ impl Step {
 
     fn demo_timing(self) -> Option<(&'static [u64], u64)> {
         match self {
-            Self::Instant => Some((&[300, 2350, 3350, 4350, 5350, 6350, 7350, 8350], 9550)),
             Self::Studio => Some((
                 &[
                     300, 2350, 3350, 4350, 5350, 6350, 7350, 8150, 9150, 10150, 11150,
@@ -186,26 +183,12 @@ pub(crate) struct ModeDetail {
 
 pub(crate) fn mode_detail(mode: Mode) -> &'static ModeDetail {
     match mode {
-        Mode::Instant => &MODES[0],
-        Mode::Studio => &MODES[1],
-        Mode::Screenshot => &MODES[2],
+        Mode::Instant | Mode::Studio => &MODES[0],
+        Mode::Screenshot => &MODES[1],
     }
 }
 
-static MODES: [ModeDetail; 3] = [
-    ModeDetail {
-        mode: Mode::Instant,
-        title: tr::onboarding::modes::instant::title,
-        tagline: tr::onboarding::modes::instant::tagline,
-        description: tr::onboarding::modes::instant::description,
-        icon: "icons/instant.svg",
-        features: [
-            tr::onboarding::modes::instant::feature_1,
-            tr::onboarding::modes::instant::feature_2,
-            tr::onboarding::modes::instant::feature_3,
-            tr::onboarding::modes::instant::feature_4,
-        ],
-    },
+static MODES: [ModeDetail; 2] = [
     ModeDetail {
         mode: Mode::Studio,
         title: tr::onboarding::modes::studio::title,
@@ -234,14 +217,10 @@ static MODES: [ModeDetail; 3] = [
     },
 ];
 
-const FAQ: [(fn() -> &'static str, fn() -> &'static str); 5] = [
+const FAQ: [(fn() -> &'static str, fn() -> &'static str); 3] = [
     (
         tr::onboarding::faq::free::question,
         tr::onboarding::faq::free::answer,
-    ),
-    (
-        tr::onboarding::faq::instant_vs_studio::question,
-        tr::onboarding::faq::instant_vs_studio::answer,
     ),
     (
         tr::onboarding::faq::storage::question,
@@ -250,10 +229,6 @@ const FAQ: [(fn() -> &'static str, fn() -> &'static str); 5] = [
     (
         tr::onboarding::faq::shortcuts::question,
         tr::onboarding::faq::shortcuts::answer,
-    ),
-    (
-        tr::onboarding::faq::sharing::question,
-        tr::onboarding::faq::sharing::answer,
     ),
 ];
 
@@ -1167,10 +1142,16 @@ impl OnboardingWindow {
         let logo_y = -24. * logo_leave * travel;
         let logo_opacity = ease(beat(m.t, 0.6, 1.2)) * (1. - logo_leave);
 
-        let logo = img("onboarding/wordmark.svg")
-            .w(px(120.))
-            .h(px(40.))
-            .object_fit(ObjectFit::Contain);
+        let logo = div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(
+                img("onboarding/wordmark.svg")
+                    .size(px(40.))
+                    .object_fit(ObjectFit::Contain),
+            )
+            .child(copy(crate::menus::APP_NAME, 24., ink));
 
         let shadow = |color: u32, y: f32, blur: f32, spread: f32, inset: bool| gpui::BoxShadow {
             color: rgba(color).into(),
@@ -1484,7 +1465,7 @@ impl OnboardingWindow {
                 self.paper_card()
                     .flex_1()
                     .min_w_0()
-                    .h(px(if index == 1 { 300. } else { 288. }))
+                    .h(px(if index == 0 { 300. } else { 288. }))
                     .rounded(px(16.))
                     .p(px(16.))
                     .child(self.render_demo(index)),
@@ -2153,96 +2134,6 @@ impl OnboardingWindow {
             )
     }
 
-    fn demo_link(&self) -> Div {
-        let theme = self.theme;
-        let copied = self.demo_phase >= 8;
-        self.card()
-            .bg(if theme.is_dark() {
-                theme.gray_1.into()
-            } else {
-                gpui::white()
-            })
-            .w_full()
-            .max_w(px(340.))
-            .overflow_hidden()
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    .px(px(16.))
-                    .pt(px(14.))
-                    .pb(px(10.))
-                    .child(
-                        div()
-                            .size(px(20.))
-                            .rounded_full()
-                            .bg(self.success_palette().0)
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child(glyph("icons/check.svg", 12., self.success_palette().2)),
-                    )
-                    .child(copy(tr::onboarding::demo::link_ready(), 12., theme.gray_12)),
-            )
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    .m(px(12.))
-                    .mt_0()
-                    .p(px(8.))
-                    .rounded(px(8.))
-                    .bg(theme.body_fill(3))
-                    .child(
-                        copy("cap.so/s/m4k92x", 11., theme.gray_11)
-                            .flex_1()
-                            .min_w_0(),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(4.))
-                            .px(px(8.))
-                            .py(px(5.))
-                            .rounded(px(6.))
-                            .bg(if copied {
-                                self.success_palette().0
-                            } else {
-                                theme.body_fill(1)
-                            })
-                            .child(glyph(
-                                if copied {
-                                    "icons/check.svg"
-                                } else {
-                                    "icons/copy.svg"
-                                },
-                                12.,
-                                if copied {
-                                    self.success_palette().2
-                                } else {
-                                    theme.body_text()
-                                },
-                            ))
-                            .child(copy(
-                                if copied {
-                                    tr::onboarding::demo::copied()
-                                } else {
-                                    tr::onboarding::demo::copy()
-                                },
-                                11.,
-                                if copied {
-                                    self.success_palette().2
-                                } else {
-                                    theme.body_text()
-                                },
-                            )),
-                    ),
-            )
-    }
-
     fn demo_document(&self) -> Div {
         let theme = self.theme;
         self.card()
@@ -2684,20 +2575,6 @@ impl OnboardingWindow {
             0 => (
                 [
                     tr::onboarding::demo::steps::record(),
-                    tr::onboarding::demo::steps::stop(),
-                    tr::onboarding::demo::steps::share_link(),
-                ],
-                if phase <= 5 {
-                    0
-                } else if phase == 6 {
-                    1
-                } else {
-                    2
-                },
-            ),
-            1 => (
-                [
-                    tr::onboarding::demo::steps::record(),
                     tr::onboarding::demo::steps::edit(),
                     tr::onboarding::demo::export(),
                 ],
@@ -2724,7 +2601,7 @@ impl OnboardingWindow {
                 },
             ),
         };
-        let content = if index == 2 {
+        let content = if index == 1 {
             self.demo_screenshot()
         } else if phase <= 1 {
             div()
@@ -2736,8 +2613,6 @@ impl OnboardingWindow {
                 .into_any_element()
         } else if phase <= 6 {
             self.demo_recording().into_any_element()
-        } else if index == 0 {
-            self.demo_link().into_any_element()
         } else {
             self.demo_editor().into_any_element()
         };
@@ -2776,9 +2651,8 @@ impl Render for OnboardingWindow {
         let content = match self.step {
             Step::Permissions => self.render_permissions(cx),
             Step::Overview => self.render_overview(),
-            Step::Instant => self.render_detail(0),
-            Step::Studio => self.render_detail(1),
-            Step::Screenshot => self.render_detail(2),
+            Step::Studio => self.render_detail(0),
+            Step::Screenshot => self.render_detail(1),
             Step::Toggle => self.render_toggle(cx),
             Step::Shortcuts => self.render_shortcuts(),
             Step::Faq => self.render_faq(cx),
@@ -2914,7 +2788,7 @@ mod tests {
 
     #[test]
     fn first_run_visits_every_platform_stage_and_back_never_opens_an_omitted_step() {
-        for (macos, expected) in [(true, 8), (false, 7)] {
+        for (macos, expected) in [(true, 7), (false, 6)] {
             let first = Step::first(macos, false);
             let mut visited = vec![first];
             while let Some(next) = visited.last().unwrap().next(false, true) {
@@ -2928,6 +2802,17 @@ mod tests {
             assert_eq!(first.previous(first), None);
             assert_eq!(visited.contains(&Step::Permissions), macos);
         }
+    }
+
+    #[test]
+    fn local_tour_details_match_the_selectable_modes() {
+        let expected = [Mode::Studio, Mode::Screenshot];
+        assert_eq!(MODES.len(), expected.len());
+        for (detail, mode) in MODES.iter().zip(expected) {
+            assert_eq!(detail.mode, mode);
+            assert_eq!(mode_detail(mode).mode, mode);
+        }
+        assert_eq!(mode_detail(Mode::Instant).mode, Mode::Studio);
     }
 
     #[test]

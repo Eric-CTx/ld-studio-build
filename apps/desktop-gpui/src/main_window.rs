@@ -1827,7 +1827,7 @@ impl MainWindow {
         };
         if !recover
             && !crate::platform::confirm_dialog(
-                "Cap",
+                "灵动录屏",
                 tr::main::delete_recording_confirm(),
                 tr::common::yes(),
                 tr::common::no(),
@@ -4935,7 +4935,7 @@ impl MainWindow {
     ) {
         cx.spawn_in(window, async move |_, cx| {
             if !crate::platform::confirm_dialog(
-                "Cap",
+                "灵动录屏",
                 tr::main::delete_recording_confirm(),
                 tr::common::yes(),
                 tr::common::no(),
@@ -4967,7 +4967,7 @@ impl MainWindow {
     ) {
         cx.spawn_in(window, async move |this, cx| {
             if !crate::platform::confirm_dialog(
-                "Cap",
+                "灵动录屏",
                 tr::main::delete_screenshot_confirm(),
                 tr::common::yes(),
                 tr::common::no(),
@@ -6291,14 +6291,25 @@ impl MainWindow {
     /// The app ships two files rather than recolouring one, so this picks the
     /// same way it does.
     fn render_logo(&self) -> impl IntoElement {
-        img(if self.theme.is_dark() {
-            "icons/logo-full-dark.svg"
-        } else {
-            "icons/logo-full.svg"
-        })
-        .w(px(84.))
-        .h(px(84. * 40. / 103.))
-        .flex_shrink_0()
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.))
+            .flex_shrink_0()
+            .child(
+                img(if self.theme.is_dark() {
+                    "icons/logo-full-dark.svg"
+                } else {
+                    "icons/logo-full.svg"
+                })
+                .size(px(32.)),
+            )
+            .child(
+                div()
+                    .text_size(px(18.))
+                    .text_color(self.theme.body_text())
+                    .child(crate::menus::APP_NAME),
+            )
     }
 
     fn clear_mode_hover(&mut self) {

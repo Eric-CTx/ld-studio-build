@@ -1682,29 +1682,36 @@ impl SettingsWindow {
                 cx,
             ),
         );
-        recording.push(
-            self.render_outcome_panel(
-                "outcome-instant",
-                tr::settings::shortcuts::after_instant::title(),
-                tr::settings::shortcuts::after_instant::hint(),
-                &INSTANT_OUTCOMES
-                    .iter()
-                    .map(|(value, option)| {
-                        (*option, *value == self.settings.post_instant_behaviour())
-                    })
-                    .collect::<Vec<_>>(),
-                |this, index, cx| {
-                    if let Some((value, _)) = INSTANT_OUTCOMES.get(index) {
-                        let (disable_open, show_main) = value.store_values();
-                        this.settings.disable_auto_open_links = disable_open;
-                        this.settings.show_main_window_after_instant = Some(show_main);
-                        this.write_bool("disableAutoOpenLinks", disable_open, cx);
-                        this.write_bool(store::SHOW_MAIN_WINDOW_AFTER_INSTANT_KEY, show_main, cx);
-                    }
-                },
-                cx,
-            ),
-        );
+        // 纯本地版不展示 Instant 选项，保留其设置映射。
+        if false {
+            recording.push(
+                self.render_outcome_panel(
+                    "outcome-instant",
+                    tr::settings::shortcuts::after_instant::title(),
+                    tr::settings::shortcuts::after_instant::hint(),
+                    &INSTANT_OUTCOMES
+                        .iter()
+                        .map(|(value, option)| {
+                            (*option, *value == self.settings.post_instant_behaviour())
+                        })
+                        .collect::<Vec<_>>(),
+                    |this, index, cx| {
+                        if let Some((value, _)) = INSTANT_OUTCOMES.get(index) {
+                            let (disable_open, show_main) = value.store_values();
+                            this.settings.disable_auto_open_links = disable_open;
+                            this.settings.show_main_window_after_instant = Some(show_main);
+                            this.write_bool("disableAutoOpenLinks", disable_open, cx);
+                            this.write_bool(
+                                store::SHOW_MAIN_WINDOW_AFTER_INSTANT_KEY,
+                                show_main,
+                                cx,
+                            );
+                        }
+                    },
+                    cx,
+                ),
+            );
+        }
 
         let cancel = vec![
             self.render_outcome_panel(
@@ -5608,12 +5615,10 @@ fn format_timestamp(value: &str) -> Option<String> {
 // Automations (automations.tsx)
 // ---------------------------------------------------------------------------
 
-const ALL_TRIGGERS: [Trigger; 7] = [
+const ALL_TRIGGERS: [Trigger; 5] = [
     Trigger::ScreenshotTaken,
     Trigger::StudioRecordingFinished,
-    Trigger::InstantRecordingFinished,
     Trigger::RecordingStarted,
-    Trigger::UploadCompleted,
     Trigger::VideoImported,
     Trigger::RecordingDeleted,
 ];
@@ -5638,11 +5643,10 @@ enum ActionType {
 }
 
 /// `ALL_ACTION_TYPES` order in automations.tsx.
-const ALL_ACTION_TYPES: [ActionType; 14] = [
+const ALL_ACTION_TYPES: [ActionType; 13] = [
     ActionType::CopyToClipboard,
     ActionType::SaveToLocation,
     ActionType::Export,
-    ActionType::Upload,
     ActionType::RevealInFileManager,
     ActionType::OpenFile,
     ActionType::RecognizeTextToClipboard,
@@ -5689,10 +5693,8 @@ const CAPTURE_TARGETS: [(CaptureTargetKind, fn() -> &'static str); 3] = [
     ),
 ];
 
-const RECORDING_MODES: [(AutomationRecordingMode, &str); 2] = [
-    (AutomationRecordingMode::Studio, "Studio"),
-    (AutomationRecordingMode::Instant, "Instant"),
-];
+const RECORDING_MODES: [(AutomationRecordingMode, &str); 1] =
+    [(AutomationRecordingMode::Studio, "Studio")];
 
 const CLIPBOARD_SOURCES: [(ClipboardSource, fn() -> &'static str); 2] = [
     (
@@ -6763,7 +6765,16 @@ impl SettingsWindow {
 
         // `grid grid-cols-2 gap-2.5`, as rows of two.
         let mut template_rows: Vec<gpui::AnyElement> = Vec::new();
-        for pair in TEMPLATES.chunks(2) {
+        let templates: Vec<_> = TEMPLATES
+            .iter()
+            .filter(|template| {
+                !matches!(
+                    template.id,
+                    "upload-share" | "notify-upload" | "webhook-share"
+                )
+            })
+            .collect();
+        for pair in templates.chunks(2) {
             template_rows.push(
                 div()
                     .flex()
@@ -7433,11 +7444,10 @@ impl SettingsWindow {
                 .into_any_element()
             }
             Condition::RecordingModeIs { mode } => {
-                let label = RECORDING_MODES
-                    .iter()
-                    .find(|(candidate, _)| candidate == mode)
-                    .map(|(_, label)| *label)
-                    .unwrap_or("Studio");
+                let label = match mode {
+                    AutomationRecordingMode::Studio => "Studio",
+                    AutomationRecordingMode::Instant => "Instant",
+                };
                 self.pages_select(
                     SharedString::from(format!("condition-mode-{rule}-{index}")),
                     label,

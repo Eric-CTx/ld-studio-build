@@ -911,15 +911,15 @@ impl WindowExclusion {
 /// `DEFAULT_EXCLUDED_WINDOW_TITLES` in `general_settings.rs`, which is what
 /// the page's Reset button asks the backend for.
 pub const DEFAULT_EXCLUDED_WINDOW_TITLES: &[&str] = &[
-    "Cap",
-    "Cap Settings",
-    "Cap Recording Controls",
-    "Cap Camera",
+    "灵动录屏",
+    "灵动录屏设置",
+    "灵动录屏录制控制",
+    "灵动录屏摄像头",
     "Cap Window Capture Occluder",
     "Cap Capture Area",
-    "Cap Mode Selection",
+    "灵动录屏模式选择",
     "Cap Recordings Overlay",
-    "Cap Teleprompter",
+    "灵动录屏提词器",
 ];
 
 pub fn default_excluded_windows() -> Vec<WindowExclusion> {
@@ -1449,6 +1449,30 @@ impl GeneralSettings {
                     entries
                         .iter()
                         .filter_map(WindowExclusion::from_json)
+                        .map(|mut rule| {
+                            use crate::app_windows::OwnWindow;
+                            if rule.bundle_identifier.is_none() && rule.owner_name.is_none() {
+                                let kind = match rule.window_title.as_deref() {
+                                    Some("Cap") => Some(OwnWindow::Main),
+                                    Some("Cap Settings") => Some(OwnWindow::Settings),
+                                    Some("Cap Recording Controls") => Some(OwnWindow::Controls),
+                                    Some("Cap Camera") => Some(OwnWindow::Camera),
+                                    Some("Cap Mode Selection") => Some(OwnWindow::ModeSelect),
+                                    Some("Cap Teleprompter") => Some(OwnWindow::Teleprompter),
+                                    Some("Cap Target Select") => Some(OwnWindow::TargetSelect),
+                                    Some("Cap Editor") => Some(OwnWindow::Editor),
+                                    Some("Cap Screenshot Editor") => {
+                                        Some(OwnWindow::ScreenshotEditor)
+                                    }
+                                    Some("Welcome to Cap") => Some(OwnWindow::Onboarding),
+                                    _ => None,
+                                };
+                                if let Some(kind) = kind {
+                                    rule.window_title = Some(kind.title().to_string());
+                                }
+                            }
+                            rule
+                        })
                         .collect()
                 })
                 .unwrap_or_else(default_excluded_windows),
@@ -3116,7 +3140,7 @@ mod tests {
         assert_eq!(settings.max_fps, 120);
         assert_eq!(settings.server_url, "https://cap.example.com");
         assert_eq!(settings.excluded_windows.len(), 1);
-        assert_eq!(settings.excluded_windows[0].primary_label(), "Cap");
+        assert_eq!(settings.excluded_windows[0].primary_label(), "灵动录屏");
         // Absent keys take the page's defaults, not the struct's zero values.
         assert!(settings.enable_notifications);
         assert!(settings.crash_recovery_recording);
@@ -3495,6 +3519,47 @@ mod tests {
     }
 
     #[test]
+    fn legacy_own_window_exclusions_follow_the_brand_without_resetting_custom_rules() {
+        let mut general = Map::new();
+        general.insert(
+            "excludedWindows".to_string(),
+            serde_json::json!([
+                { "windowTitle": "Cap" },
+                { "windowTitle": "Cap Settings" },
+                { "windowTitle": "Cap Camera" },
+                { "windowTitle": "My Notes" },
+                { "ownerName": "Another App", "windowTitle": "Cap" },
+                { "bundleIdentifier": "other.app", "windowTitle": "Cap Settings" }
+            ]),
+        );
+        let settings = GeneralSettings::from_sections(&general, &Map::new(), &Map::new());
+        let titles: Vec<_> = settings
+            .excluded_windows
+            .iter()
+            .map(|rule| rule.window_title.as_deref().unwrap())
+            .collect();
+        assert_eq!(
+            titles,
+            [
+                "灵动录屏",
+                "灵动录屏设置",
+                "灵动录屏摄像头",
+                "My Notes",
+                "Cap",
+                "Cap Settings"
+            ]
+        );
+        assert_eq!(
+            settings.excluded_windows[4].owner_name.as_deref(),
+            Some("Another App")
+        );
+        assert_eq!(
+            settings.excluded_windows[5].bundle_identifier.as_deref(),
+            Some("other.app")
+        );
+    }
+
+    #[test]
     fn editor_preview_speed_reads_offered_steps_and_falls_back_to_normal() {
         let read = |value: Option<Value>| {
             let mut general = Map::new();
@@ -3529,7 +3594,7 @@ mod tests {
             absent
                 .excluded_windows
                 .iter()
-                .any(|e| e.window_title.as_deref() == Some("Cap Camera"))
+                .any(|e| e.window_title.as_deref() == Some("灵动录屏摄像头"))
         );
 
         let mut general = Map::new();

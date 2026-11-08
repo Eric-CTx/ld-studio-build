@@ -220,7 +220,7 @@ mode_values = "“studio”、“instant” 或 “screenshot”"
 random = "随机"
 random_values = "10 个可用于文件名的十六进制字符；使用 {{random:N}} 指定 1–32 个。"
 recording_mode = "录制模式"
-recording_mode_values = "“Studio”、“Instant” 或 “Screenshot”"
+recording_mode_values = "“Studio” 或 “Screenshot”"
 target = "目标"
 target_kind_values = "“Display”、“Window” 或 “Area”"
 target_name_values = "显示器名称或窗口标题。"
@@ -454,7 +454,7 @@ stop = "停止录制"
 
 [settings.shortcuts.effect]
 add_marker = "在 Studio 录制中标记此刻"
-cycle_mode = "在 Studio、Instant 和截图模式之间切换"
+cycle_mode = "在 Studio 和截图模式之间切换"
 instant_copy = "以 Instant 模式录制所选屏幕或窗口，停止后复制分享链接"
 instant_copy_and_open = "以 Instant 模式录制所选屏幕或窗口，停止后复制并打开分享链接"
 open_picker = "打开灵动录屏以选择要录制的内容"
@@ -487,7 +487,7 @@ studio_open_editor = "以 Studio 模式录制所选屏幕或窗口，停止后�
 
 [settings.shortcuts.sentence]
 add_marker = "在 Studio 录制中标记此刻。"
-cycle_mode = "在 Studio、Instant 和截图模式之间切换。"
+cycle_mode = "在 Studio 和截图模式之间切换。"
 instant_copy = "以 Instant 模式录制所选屏幕或窗口，停止后复制分享链接。"
 instant_copy_and_open = "以 Instant 模式录制所选屏幕或窗口，停止后复制并打开分享链接。"
 open_picker = "打开灵动录屏以选择要录制的内容。"
@@ -1256,7 +1256,7 @@ answer = "随时前往“设置 → 快捷键”，自定义所有键盘快捷�
 question = "以后可以更改快捷键吗？"
 
 [onboarding.faq.storage]
-answer = "所有录制都保存在你电脑本地。在 Instant 模式下，它们还会上传到灵动录屏云以便分享。你可以在设置中管理存储。"
+answer = "所有录制都保存在你电脑本地。你可以在设置中管理存储。"
 question = "我的录制保存在哪里？"
 
 [onboarding.modes.instant]
@@ -1465,7 +1465,7 @@ display_fallback = "显示器 {id}"
 countdown_title = "录制倒计时"
 countdown_body = "按下“开始录制”后，等待几秒再开始录制。"
 mode_title = "更改录制模式"
-mode_body = "Instant 会在你停止录制的那一刻给你一个分享链接。Studio 以完整画质录制，方便后期编辑。"
+mode_body = "Studio 以完整画质录制并保存在本地，方便后期编辑。截图模式用于截取屏幕画面。"
 
 [overlay.area]
 draw = "绘制一个区域"

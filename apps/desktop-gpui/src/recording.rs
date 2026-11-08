@@ -2543,7 +2543,9 @@ async fn start_attempt_with_upload(
         if config.mode == RecordingMode::Instant {
             // `filter_for_instant_mode`: instant has no compositing step,
             // so the camera bubble stays in the picture there.
-            rules.retain(|rule| rule.window_title.as_deref() != Some("Cap Camera"));
+            rules.retain(|rule| {
+                rule.window_title.as_deref() != Some(crate::app_windows::OwnWindow::Camera.title())
+            });
         }
         for id in resolve_excluded_window_ids(&rules) {
             if !excluded.contains(&id) {

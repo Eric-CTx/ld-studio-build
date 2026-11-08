@@ -41,7 +41,7 @@ use crate::{
 
 /// `productName` in `tauri.conf.json`, which is what macOS renames the first
 /// submenu to.
-pub const APP_NAME: &str = "Cap";
+pub const APP_NAME: &str = "灵动录屏";
 
 /// `env!("CARGO_PKG_VERSION")`, exactly as `build_tray_menu` spells it -- this
 /// crate's version, which is the gpui app's own (0.1.x) rather than the
@@ -238,7 +238,11 @@ pub fn build_menus(settings_enabled: bool) -> Vec<Menu> {
         ]
     };
 
-    let mut app_items = vec![MenuItem::action(tr::menu::app::about(), About)];
+    let mut app_items = if cfg!(target_os = "windows") {
+        Vec::new()
+    } else {
+        vec![MenuItem::action(tr::menu::app::about(), About)]
+    };
     app_items.extend([
         MenuItem::action(tr::menu::app::settings(), OpenSettings).disabled(!settings_enabled),
         MenuItem::separator(),
@@ -1138,20 +1142,22 @@ mod tests {
         assert_eq!(
             menus,
             vec![
-                (
-                    "Cap".to_string(),
-                    vec![
-                        "About Cap".to_string(),
+                (APP_NAME.to_string(), {
+                    let mut items = vec![
                         tr::menu::app::settings().into(),
                         "-".into(),
                         "Services".into(),
                         "-".into(),
-                        "Hide Cap".into(),
+                        tr::menu::app::hide().into(),
                         "Hide Others".into(),
                         "-".into(),
-                        "Quit Cap".into(),
-                    ]
-                ),
+                        tr::menu::app::quit().into(),
+                    ];
+                    if !cfg!(target_os = "windows") {
+                        items.insert(0, tr::menu::app::about().into());
+                    }
+                    items
+                }),
                 ("File".into(), expected_file_items,),
                 (
                     "Edit".into(),
@@ -1177,19 +1183,11 @@ mod tests {
                 ),
                 (
                     "Help".into(),
-                    vec![
-                        "Give Feedback…".into(),
-                        "-".into(),
-                        "Changelog".into(),
-                        "-".into(),
-                        "Dashboard".into(),
-                        "Documentation".into(),
-                        "FAQ".into(),
-                        "Self-hosting".into(),
-                        "Help Center".into(),
-                        "System Status".into(),
-                        "Join Discord Community".into(),
-                    ],
+                    if cfg!(target_os = "windows") {
+                        vec![]
+                    } else {
+                        vec!["Give Feedback…".into(), "-".into(), "Changelog".into()]
+                    },
                 ),
             ]
         );
