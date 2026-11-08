@@ -706,8 +706,7 @@ mod mac {
     /// from that model in this order, so the positions are fixed.
     const APP_MENU: isize = 0;
     const ABOUT_ROW: isize = 0;
-    const UPDATE_ROW: isize = 1;
-    const SETTINGS_ROW: isize = 3;
+    const SETTINGS_ROW: isize = 1;
     const FILE_MENU: isize = 1;
     const OPEN_RECENT_ROW: isize = 1;
     const HELP_MENU: isize = 5;
@@ -950,45 +949,6 @@ mod mac {
         } else {
             tracing::warn!("NSDocumentController cannot install the Open Recent menu");
         }
-    }
-
-    /// Rewrites the Check for Update row in place. A menu item edited this way
-    /// keeps whatever menu the user has open on screen; reinstalling the menu
-    /// bar for every download-percentage tick would close it.
-    pub fn set_update_menu_item(title: &str, badge: Option<&str>, enabled: bool) {
-        use objc2::runtime::AnyClass;
-        use objc2_app_kit::NSMenuItemBadge;
-        use objc2_foundation::MainThreadMarker;
-
-        let Some(main_thread) = MainThreadMarker::new() else {
-            return;
-        };
-        let Some(item) = update_menu_item(main_thread) else {
-            tracing::warn!("The update row is missing from the application menu");
-            return;
-        };
-        item.setTitle(&NSString::from_str(title));
-        item.setEnabled(enabled);
-
-        // `NSMenuItemBadge` and `setBadge:` are macOS 14+, and objc2's class
-        // lookup panics when the class is absent.
-        if AnyClass::get(c"NSMenuItemBadge").is_none() {
-            return;
-        }
-        let badge = badge.map(|text| {
-            NSMenuItemBadge::initWithString(main_thread.alloc(), &NSString::from_str(text))
-        });
-        item.setBadge(badge.as_deref());
-    }
-
-    fn update_menu_item(
-        main_thread: objc2_foundation::MainThreadMarker,
-    ) -> Option<Retained<NSMenuItem>> {
-        NSApplication::sharedApplication(main_thread)
-            .mainMenu()?
-            .itemAtIndex(APP_MENU)?
-            .submenu()?
-            .itemAtIndex(UPDATE_ROW)
     }
 
     unsafe extern "C-unwind" fn application_should_terminate(

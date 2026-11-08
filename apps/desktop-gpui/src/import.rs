@@ -196,10 +196,6 @@ pub fn imports_snapshot(cx: &App) -> Vec<ImportProgress> {
         .unwrap_or_default()
 }
 
-pub fn imports_in_flight(cx: &App) -> bool {
-    ACTIVE_IMPORT_WORKERS.load(Ordering::Acquire) != 0 || !imports_snapshot(cx).is_empty()
-}
-
 pub(crate) struct InFlightImport;
 
 impl InFlightImport {

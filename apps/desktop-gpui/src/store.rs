@@ -1708,7 +1708,6 @@ pub struct AuthSnapshot {
 #[derive(Debug, Clone)]
 pub struct AuthOrganization {
     pub id: String,
-    pub name: String,
 }
 
 impl AuthSnapshot {
@@ -1767,11 +1766,6 @@ pub fn auth_snapshot() -> AuthSnapshot {
                     let object = entry.as_object()?;
                     Some(AuthOrganization {
                         id: object.get("id")?.as_str()?.to_string(),
-                        name: object
-                            .get("name")
-                            .and_then(Value::as_str)
-                            .unwrap_or("Organization")
-                            .to_string(),
                     })
                 })
                 .collect()

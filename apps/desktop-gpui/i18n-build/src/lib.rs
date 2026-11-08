@@ -1268,6 +1268,8 @@ fn emit_accessor(code: &mut Code, name: &str, key: &str, depth: usize, context: 
         doc.push_str("\n\n");
         doc.push_str(note);
     }
+    // Keys stay in the catalogue when the UI that used them is hidden.
+    code.line("#[allow(dead_code)]");
     code.line(format!("#[doc = {doc:?}]"));
 
     if let Some(id) = context.text_ids.get(key) {

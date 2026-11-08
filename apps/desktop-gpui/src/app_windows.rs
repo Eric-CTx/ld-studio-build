@@ -502,25 +502,6 @@ fn remove_popup_window_chrome(native: Option<platform::NativeWindow>, cx: &mut A
         .detach();
 }
 
-pub(crate) fn export_in_flight(cx: &App) -> bool {
-    if !cx.has_global::<AppWindows>() {
-        return false;
-    }
-
-    let windows = cx.global::<AppWindows>();
-    windows.editors.iter().any(|(_, handle)| {
-        handle
-            .read(cx)
-            .ok()
-            .and_then(|editor| editor.export.as_ref())
-            .is_some_and(|export| export.phase.is_busy())
-    }) || windows.screenshot_editors.iter().any(|(_, handle)| {
-        handle
-            .read(cx)
-            .is_ok_and(ScreenshotEditorWindow::export_in_flight)
-    })
-}
-
 pub(crate) fn flush_pending_editor_saves(cx: &mut App) -> Result<(), String> {
     if !cx.has_global::<AppWindows>() {
         return Ok(());
@@ -1223,15 +1204,6 @@ pub fn open_quality_settings(mode: Mode, cx: &mut App) {
                 view.show_quality_settings(mode, window, cx);
             })
             .ok();
-    }
-}
-
-pub(crate) fn refresh_settings(cx: &mut App) {
-    if !cx.has_global::<AppWindows>() {
-        return;
-    }
-    if let Some(handle) = cx.global::<AppWindows>().settings {
-        handle.update(cx, |_, _, cx| cx.notify()).ok();
     }
 }
 

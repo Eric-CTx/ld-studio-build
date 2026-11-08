@@ -37,80 +37,11 @@ use crate::{
     settings_window::Page,
     store,
     ui::text_input,
-    updates,
 };
 
 /// `productName` in `tauri.conf.json`, which is what macOS renames the first
 /// submenu to.
 pub const APP_NAME: &str = "Cap";
-
-struct MenuRegistration(UpdateRow);
-
-impl Global for MenuRegistration {}
-
-/// What the Check for Update row currently says. Download progress only moves
-/// the badge, and only macOS applies it without rebuilding the menu bar, so a
-/// percentage tick never touches the menu on the other platforms.
-#[derive(Clone, PartialEq)]
-struct UpdateRow {
-    title: &'static str,
-    enabled: bool,
-    badge: Option<String>,
-}
-
-impl UpdateRow {
-    fn of(status: &updates::UpdateStatus) -> Self {
-        use updates::UpdateStatus;
-
-        let title = match status {
-            UpdateStatus::Idle => tr::menu::update::check(),
-            UpdateStatus::Checking => tr::menu::update::checking(),
-            UpdateStatus::Available { .. } => tr::menu::update::download(),
-            UpdateStatus::Downloading { .. } | UpdateStatus::Installing { .. } => {
-                tr::menu::update::downloading()
-            }
-            UpdateStatus::Ready { .. } | UpdateStatus::Installed { .. } => {
-                tr::menu::update::restart()
-            }
-        };
-        Self {
-            title,
-            enabled: !matches!(
-                status,
-                UpdateStatus::Checking
-                    | UpdateStatus::Downloading { .. }
-                    | UpdateStatus::Installing { .. }
-            ),
-            badge: update_menu_badge(status),
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn update_menu_badge(status: &updates::UpdateStatus) -> Option<String> {
-    use updates::UpdateStatus;
-
-    match status {
-        UpdateStatus::Downloading {
-            version,
-            fraction: Some(fraction),
-        } => Some(tr::menu::update::badge_progress(
-            version,
-            (fraction * 100.0).round() as u32,
-        )),
-        UpdateStatus::Available { version }
-        | UpdateStatus::Downloading { version, .. }
-        | UpdateStatus::Ready { version }
-        | UpdateStatus::Installing { version }
-        | UpdateStatus::Installed { version, .. } => Some(tr::menu::update::badge_version(version)),
-        UpdateStatus::Idle | UpdateStatus::Checking => None,
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn update_menu_badge(_: &updates::UpdateStatus) -> Option<String> {
-    None
-}
 
 /// `env!("CARGO_PKG_VERSION")`, exactly as `build_tray_menu` spells it -- this
 /// crate's version, which is the gpui app's own (0.1.x) rather than the
@@ -125,7 +56,6 @@ actions!(
     [
         /// `PredefinedMenuItem::about` -- `orderFrontStandardAboutPanel`.
         About,
-        CheckForUpdate,
         /// `PredefinedMenuItem::hide` -- ⌘H.
         HideSelf,
         /// `PredefinedMenuItem::hide_others` -- ⌥⌘H.
@@ -164,9 +94,6 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &About, cx: &mut App| {
         cx.spawn(async move |_| platform::show_about_panel(APP_NAME, app_version()))
             .detach();
-    });
-    cx.on_action(|_: &CheckForUpdate, cx: &mut App| {
-        updates::check_manually(cx);
     });
     cx.on_action(|_: &HideSelf, cx: &mut App| cx.hide());
     cx.on_action(|_: &HideOthers, cx: &mut App| cx.hide_other_apps());
@@ -238,7 +165,6 @@ pub fn init(cx: &mut App) {
         with_key_native(cx, platform::toggle_fullscreen_native)
     });
 
-    cx.set_global(MenuRegistration(UpdateRow::of(&updates::status(cx))));
     install_menus(cx);
     MENUS_INSTALLED.store(true, Ordering::Relaxed);
     #[cfg(target_os = "macos")]
@@ -270,49 +196,11 @@ fn register_system_menus() {
     );
 }
 
-pub(crate) fn refresh_update_menu(cx: &mut App) {
-    if !cx.has_global::<MenuRegistration>() {
-        return;
-    }
-
-    let row = UpdateRow::of(&updates::status(cx));
-    if cx.global::<MenuRegistration>().0 == row {
-        return;
-    }
-    cx.global_mut::<MenuRegistration>().0 = row.clone();
-
-    #[cfg(target_os = "macos")]
-    platform::set_update_menu_item(row.title, row.badge.as_deref(), row.enabled);
-    #[cfg(not(target_os = "macos"))]
-    install_menus(cx);
-}
-
-pub(crate) fn reapply_update_row(cx: &mut App) {
-    if !cx.has_global::<MenuRegistration>() {
-        return;
-    }
-    let row = UpdateRow::of(&updates::status(cx));
-    cx.global_mut::<MenuRegistration>().0 = row.clone();
-    #[cfg(target_os = "macos")]
-    platform::set_update_menu_item(row.title, row.badge.as_deref(), row.enabled);
-    #[cfg(not(target_os = "macos"))]
-    install_menus(cx);
-}
-
 fn install_menus(cx: &mut App) {
-    let update_status = updates::status(cx);
     let settings_enabled = !crate::app_windows::onboarding_is_open(cx);
-    cx.set_menus(build_menus(&update_status, settings_enabled));
+    cx.set_menus(build_menus(settings_enabled));
     #[cfg(target_os = "macos")]
-    {
-        platform::patch_standard_application_menu();
-        // The badge lives only on the native item, so a rebuilt menu bar
-        // (a language change, onboarding finishing) needs it put back.
-        let row = UpdateRow::of(&update_status);
-        if row.badge.is_some() {
-            platform::set_update_menu_item(row.title, row.badge.as_deref(), row.enabled);
-        }
-    }
+    platform::patch_standard_application_menu();
 }
 
 pub(crate) fn bindings() -> Vec<KeyBinding> {
@@ -335,22 +223,12 @@ fn settings_shortcut_allowed(idle: bool, onboarding_open: bool, hotkeys_paused: 
 ///
 /// One-to-one with `build_macos_app_menu`, including the empty Help submenu
 /// (`Submenu::with_id_and_items(.., HELP_SUBMENU_ID, "Help", true, &[])`).
-pub fn build_menus(update_status: &updates::UpdateStatus, settings_enabled: bool) -> Vec<Menu> {
-    let update_row = UpdateRow::of(update_status);
-    // The local-only Windows build has no update check and no Help menu items.
-    // macOS keeps the menu layout the native menu bar positions rows by
-    // (`platform.rs` UPDATE_ROW, SETTINGS_ROW, HELP_MENU), so only the Windows
-    // build drops items here.
-    let windows_local = cfg!(target_os = "windows");
-    let update_items = if windows_local {
-        Vec::new()
-    } else {
-        vec![
-            MenuItem::action(update_row.title, CheckForUpdate).disabled(!update_row.enabled),
-            MenuItem::separator(),
-        ]
-    };
-    let help_items = if windows_local {
+pub fn build_menus(settings_enabled: bool) -> Vec<Menu> {
+    // The local-only build has no update check, so the Cap menu has no such
+    // row, and Windows drops the Help menu items too. macOS keeps the Help
+    // rows the native menu bar positions by (`platform.rs` HELP_MENU,
+    // FEEDBACK_ROW).
+    let help_items = if cfg!(target_os = "windows") {
         Vec::new()
     } else {
         vec![
@@ -361,7 +239,6 @@ pub fn build_menus(update_status: &updates::UpdateStatus, settings_enabled: bool
     };
 
     let mut app_items = vec![MenuItem::action(tr::menu::app::about(), About)];
-    app_items.extend(update_items);
     app_items.extend([
         MenuItem::action(tr::menu::app::settings(), OpenSettings).disabled(!settings_enabled),
         MenuItem::separator(),
@@ -1251,10 +1128,7 @@ mod tests {
 
     #[test]
     fn menu_bar_includes_native_and_cap_destinations() {
-        let menus: Vec<_> = build_menus(&updates::UpdateStatus::Idle, true)
-            .iter()
-            .map(describe)
-            .collect();
+        let menus: Vec<_> = build_menus(true).iter().map(describe).collect();
         let expected_file_items = vec![
             "Open File…".into(),
             "Import Media…".into(),
@@ -1268,8 +1142,6 @@ mod tests {
                     "Cap".to_string(),
                     vec![
                         "About Cap".to_string(),
-                        "Check for Update".into(),
-                        "-".into(),
                         tr::menu::app::settings().into(),
                         "-".into(),
                         "Services".into(),
@@ -1321,125 +1193,6 @@ mod tests {
                 ),
             ]
         );
-    }
-
-    /// The row is the second item of the App menu (`menu_bar_...` pins that
-    /// order); it greys out while a check or download is running so a second
-    /// click cannot fire another one.
-    #[test]
-    fn the_update_row_greys_out_while_busy() {
-        fn row(status: &updates::UpdateStatus) -> (String, bool) {
-            let menus = build_menus(status, true);
-            match &menus[0].items[1] {
-                MenuItem::Action { name, disabled, .. } => (name.to_string(), *disabled),
-                _ => panic!("the update row is an action"),
-            }
-        }
-
-        assert_eq!(
-            row(&updates::UpdateStatus::Idle),
-            ("Check for Update".to_string(), false)
-        );
-        assert_eq!(
-            row(&updates::UpdateStatus::Checking),
-            ("Checking for Update…".to_string(), true)
-        );
-        assert_eq!(
-            row(&updates::UpdateStatus::Downloading {
-                version: semver::Version::parse("0.4.0").unwrap(),
-                fraction: Some(0.42),
-            }),
-            ("Downloading update…".to_string(), true)
-        );
-        assert_eq!(
-            row(&updates::UpdateStatus::Installing {
-                version: semver::Version::parse("0.4.0").unwrap(),
-            }),
-            ("Downloading update…".to_string(), true)
-        );
-    }
-
-    /// The version lives only in the badge, and a percentage tick changes
-    /// nothing else -- that is what keeps a download from reinstalling the
-    /// menu bar on every progress event.
-    #[test]
-    fn the_update_row_keeps_the_version_out_of_the_title() {
-        use semver::Version;
-        use updates::UpdateStatus;
-
-        let version = Version::parse("0.4.0").unwrap();
-        let downloading = |fraction| UpdateStatus::Downloading {
-            version: version.clone(),
-            fraction,
-        };
-
-        let available = UpdateRow::of(&UpdateStatus::Available {
-            version: version.clone(),
-        });
-        let cold = UpdateRow::of(&downloading(None));
-        let warm = UpdateRow::of(&downloading(Some(0.42)));
-        assert_eq!(available.title, "Download update…");
-        assert!(available.enabled);
-        assert_eq!(cold.title, "Downloading update…");
-        assert!(!cold.enabled);
-        assert_eq!(warm.title, "Downloading update…");
-        assert!(!warm.enabled);
-
-        let ready = UpdateRow::of(&UpdateStatus::Ready {
-            version: version.clone(),
-        });
-        let installed = UpdateRow::of(&UpdateStatus::Installed {
-            version: version.clone(),
-            executable: std::path::PathBuf::from("/Applications/Cap.app"),
-        });
-        assert_eq!(ready.title, "Restart to update…");
-        assert_eq!(installed.title, ready.title);
-        assert_eq!(installed.badge, ready.badge);
-
-        let installing = UpdateRow::of(&UpdateStatus::Installing {
-            version: version.clone(),
-        });
-        assert_eq!(installing.title, "Downloading update…");
-        assert!(!installing.enabled);
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn the_update_badge_shows_the_version_and_live_progress() {
-        use semver::Version;
-        use updates::UpdateStatus;
-
-        let version = Version::parse("0.4.0").unwrap();
-        let badge = |status| UpdateRow::of(&status).badge;
-
-        assert_eq!(
-            badge(UpdateStatus::Available {
-                version: version.clone(),
-            }),
-            Some("v0.4.0".to_string())
-        );
-        assert_eq!(
-            badge(UpdateStatus::Downloading {
-                version: version.clone(),
-                fraction: None,
-            }),
-            Some("v0.4.0".to_string())
-        );
-        assert_eq!(
-            badge(UpdateStatus::Downloading {
-                version: version.clone(),
-                fraction: Some(0.42),
-            }),
-            Some("v0.4.0 · 42%".to_string())
-        );
-        assert_eq!(
-            badge(UpdateStatus::Ready {
-                version: version.clone(),
-            }),
-            Some("v0.4.0".to_string())
-        );
-        assert_eq!(badge(UpdateStatus::Idle), None);
-        assert_eq!(badge(UpdateStatus::Checking), None);
     }
 
     /// `sync_macos_dock_visibility`'s three branches.

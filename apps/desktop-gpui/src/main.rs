@@ -47,7 +47,6 @@ mod focus_border;
 mod hotkeys;
 mod i18n;
 mod import;
-mod installer;
 mod jpeg_thumbnail;
 mod library;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -105,7 +104,6 @@ mod transcript;
 mod transcription;
 mod tray;
 mod ui;
-mod updates;
 mod upload;
 mod foreign_window;
 mod window_arrange;
@@ -504,7 +502,6 @@ fn main() {
         }
         #[cfg(target_os = "linux")]
         single_instance::init_linux_reopen(cx);
-        updates::schedule_startup_check(cx);
         app_windows::schedule_launch_render_warmup(cx);
         upload::queue::init(cx);
         upload::instant_cleanup::init(cx);

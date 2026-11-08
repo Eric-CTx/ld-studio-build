@@ -90,12 +90,16 @@ pub enum Page {
     General,
     Quality,
     Shortcuts,
+    #[allow(dead_code)]
     Cli,
     Recordings,
     Screenshots,
     Automations,
+    #[allow(dead_code)]
     Transcription,
+    #[allow(dead_code)]
     Integrations,
+    #[allow(dead_code)]
     License,
     Experimental,
     Feedback,

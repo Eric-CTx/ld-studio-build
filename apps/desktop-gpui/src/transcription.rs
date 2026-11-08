@@ -247,14 +247,6 @@ impl Hub {
             download.model == model && download.state == DownloadState::Downloading
         })
     }
-
-    fn work_in_flight(&self) -> bool {
-        self.download
-            .as_ref()
-            .is_some_and(|download| download.state == DownloadState::Downloading)
-            || !self.generating.is_empty()
-            || self.deleting.is_some()
-    }
 }
 
 static HUB: LazyLock<Mutex<Hub>> = LazyLock::new(|| Mutex::new(Hub::default()));
@@ -290,10 +282,6 @@ pub fn download_active() -> bool {
         .download
         .as_ref()
         .is_some_and(|download| download.state == DownloadState::Downloading)
-}
-
-pub fn work_in_flight() -> bool {
-    hub().work_in_flight()
 }
 
 /// Rescan the catalogue against the disk -- `refreshDownloadedModels`
@@ -2985,30 +2973,6 @@ mod tests {
         assert!(!state.downloading("small"));
         state.download.as_mut().unwrap().state = DownloadState::Completed;
         assert!(!state.downloading("medium"));
-    }
-
-    #[test]
-    fn downloads_generation_and_deletion_block_application_handoffs() {
-        let mut state = Hub::default();
-        assert!(!state.work_in_flight());
-
-        state.download = Some(ModelDownload {
-            model: "small".to_string(),
-            state: DownloadState::Downloading,
-            progress: 25.0,
-            message: "Downloading".to_string(),
-        });
-        assert!(state.work_in_flight());
-
-        state.download.as_mut().unwrap().state = DownloadState::Completed;
-        assert!(!state.work_in_flight());
-
-        state.generating.insert(PathBuf::from("/tmp/recording.cap"));
-        assert!(state.work_in_flight());
-        state.generating.clear();
-
-        state.deleting = Some("small".to_string());
-        assert!(state.work_in_flight());
     }
 
     #[test]
