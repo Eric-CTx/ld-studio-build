@@ -1240,8 +1240,8 @@ subtitle = "开始使用前需要了解的一切。"
 title = "常见问题"
 
 [onboarding.faq.free]
-answer = "灵动录屏个人使用免费。团队和商业用途请查看我们的付费套餐。"
-question = "灵动录屏可以免费使用吗？"
+answer = "本版本提供本地录制、编辑、截图和导出功能，文件保存在电脑本地。"
+question = "本版本有哪些功能？"
 
 [onboarding.faq.instant_vs_studio]
 answer = "Instant 模式边录边上传，停止录制后就能立即拿到分享链接。Studio 模式在本地以完整画质录制，分享前可以添加背景、特效等进行编辑。"

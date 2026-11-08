@@ -2980,17 +2980,19 @@ impl ScreenshotEditorWindow {
                                 this.export_image(ExportDestination::File, window, cx);
                             })),
                     )
-                    .child(
-                        ui::EditorButton::plain(&theme, "screenshot-share")
-                            .left_icon("icons/link.svg")
-                            .icon_size(px(16.))
-                            .disabled(exporting)
-                            .tooltip(&theme, share_tooltip)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                cx.stop_propagation();
-                                this.share_screenshot(window, cx);
-                            })),
-                    )
+                    .when(false, |actions| {
+                        actions.child(
+                            ui::EditorButton::plain(&theme, "screenshot-share")
+                                .left_icon("icons/link.svg")
+                                .icon_size(px(16.))
+                                .disabled(exporting)
+                                .tooltip(&theme, share_tooltip)
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    cx.stop_propagation();
+                                    this.share_screenshot(window, cx);
+                                })),
+                        )
+                    })
                     .child(
                         self.anchored(
                             Anchor::More,

@@ -1690,36 +1690,12 @@ impl OnboardingWindow {
                             )
                             .when(open, |el| {
                                 el.child(
-                                    div()
-                                        .px(px(20.))
-                                        .pb(px(16.))
-                                        .child(
-                                            copy(answer(), 13., theme.gray_10).line_height(px(20.)),
-                                        )
-                                        .when(index == 0, |el| {
-                                            el.child(
-                                                copy(
-                                                    tr::onboarding::faq::pricing(),
-                                                    13.,
-                                                    theme.blue_10,
-                                                )
-                                                .id("onboarding-faq-pricing")
-                                                .cursor_pointer()
-                                                .mt(px(8.))
-                                                .on_click(|_, _, cx| {
-                                                    cx.open_url(crate::auth::PRICING_URL)
-                                                }),
-                                            )
-                                        }),
+                                    div().px(px(20.)).pb(px(16.)).child(
+                                        copy(answer(), 13., theme.gray_10).line_height(px(20.)),
+                                    ),
                                 )
                             })
                     })),
-            )
-            .child(
-                copy(tr::onboarding::faq::pricing_link(), 13., theme.blue_10)
-                    .id("onboarding-pricing")
-                    .cursor_pointer()
-                    .on_click(|_, _, cx| cx.open_url(crate::auth::PRICING_URL)),
             )
             .into_any_element()
     }
