@@ -25,7 +25,7 @@ try {
 	if ($LASTEXITCODE -ne 0) { throw "NSIS 载荷提取失败" }
 	$entries = @(foreach ($file in Get-ChildItem -LiteralPath $extract -File -Recurse) {
 		$relative = [IO.Path]::GetRelativePath($extract, $file.FullName).Replace("\", "/")
-		if ($relative -match '^\$PLUGINSDIR/' -or $relative -in @("cap-gpui.exe", "cap-exporter.exe") -or $relative -match '^assets/rive/') { continue }
+		if ($relative -match '^\$PLUGINSDIR/' -or $relative -in @("uninstall.exe", "cap-gpui.exe", "cap-exporter.exe") -or $relative -match '^assets/rive/') { continue }
 		if ($relative -notmatch '^(Cap\.exe|cap-muxer\.exe|cap-cli\.exe|[^/]+\.dll|licenses/dxc/[^/]+\.txt|assets/backgrounds/.+|assets/music/[^/]+\.mp3)$') {
 			throw "NSIS 出现未核对的安装文件：$relative"
 		}

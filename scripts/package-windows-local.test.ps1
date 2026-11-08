@@ -22,7 +22,7 @@ try {
 		"assets/backgrounds/cities/a.jpg", "assets/backgrounds/dark/a.jpg",
 		"assets/backgrounds/orange/a.jpg", "assets/backgrounds/purple/a.jpg"
 	)
-	foreach ($file in $files + @('cap-exporter.exe', 'cap-gpui.exe', 'assets/rive/legacy.riv', '$PLUGINSDIR/plugin.dll')) {
+	foreach ($file in $files + @('uninstall.exe', 'cap-exporter.exe', 'cap-gpui.exe', 'assets/rive/legacy.riv', '$PLUGINSDIR/plugin.dll')) {
 		$path = Join-Path $payload $file
 		$null = New-Item -ItemType Directory -Path (Split-Path $path) -Force
 		Set-Content -LiteralPath $path -Value "测试载荷 $file"
