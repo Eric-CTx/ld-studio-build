@@ -742,7 +742,7 @@ fn recordings_list_empty_dir_is_empty_json() {
 #[test]
 fn recordings_list_follows_desktop_storage_unless_dir_is_explicit() {
     let root = tempfile::tempdir().unwrap();
-    let app_data = root.path().join("so.cap.desktop");
+    let app_data = root.path().join("cn.lingdong.recorder");
     let default = app_data.join("recordings");
     let current = root.path().join("custom");
     let previous = root.path().join("previous");

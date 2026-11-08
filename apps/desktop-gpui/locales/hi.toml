@@ -26,7 +26,6 @@ settings = "सेटिंग्स…"
 
 [menu.about]
 licensed = "AGPL-3.0 के अंतर्गत लाइसेंस प्राप्त"
-website = "वेबसाइट"
 commit = "कमिट"
 
 [menu.file]
@@ -60,13 +59,6 @@ zoom = "ज़ूम करें"
 title = "सहायता"
 feedback = "फ़ीडबैक दें…"
 changelog = "चेंजलॉग"
-dashboard = "डैशबोर्ड"
-documentation = "दस्तावेज़ीकरण"
-faq = "सामान्य प्रश्न"
-self_hosting = "सेल्फ़-होस्टिंग"
-help_center = "सहायता केंद्र"
-system_status = "सिस्टम स्थिति"
-discord = "Discord समुदाय से जुड़ें"
 
 [tray]
 import_media = "मीडिया इम्पोर्ट करें..."
@@ -278,7 +270,6 @@ click_to_sign_in = "साइन इन करने के लिए क्ल�
 downloading = "v{version} डाउनलोड हो रहा है…"
 downloading_progress = "v{version} डाउनलोड हो रहा है… {percent}%"
 installing = "v{version} इंस्टॉल हो रहा है…"
-previous_versions = "पिछले वर्ज़न देखें"
 restart_to_update = "v{version} पर अपडेट करने के लिए रीस्टार्ट करें"
 sign_in = "साइन इन करें"
 sign_out = "साइन आउट करें"

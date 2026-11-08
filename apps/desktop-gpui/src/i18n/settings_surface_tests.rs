@@ -73,10 +73,6 @@ fn settings_surfaces_match_the_literals_they_replaced() {
             tr::settings::sidebar::checking_for_updates(),
             "Checking for updates…",
         ),
-        (
-            tr::settings::sidebar::previous_versions(),
-            "View previous versions",
-        ),
         (tr::settings::recordings::title(), "Recordings"),
         (
             tr::settings::recordings::description(),

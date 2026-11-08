@@ -26,7 +26,6 @@ settings = "Settings…"
 
 [menu.about]
 licensed = "Licensed under AGPL-3.0"
-website = "Website"
 commit = "Commit"
 
 [menu.file]
@@ -60,13 +59,6 @@ zoom = "Zoom"
 title = "Help"
 feedback = "Give Feedback…"
 changelog = "Changelog"
-dashboard = "Dashboard"
-documentation = "Documentation"
-faq = "FAQ"
-self_hosting = "Self-hosting"
-help_center = "Help Center"
-system_status = "System Status"
-discord = "Join Discord Community"
 
 [tray]
 import_media = "Import Media..."
@@ -280,7 +272,6 @@ click_to_sign_in = "Click to sign in"
 downloading = { text = "Downloading v{version}…", context = "{version} is a version number such as 0.6.2." }
 downloading_progress = { text = "Downloading v{version}… {percent}%", context = "{version} is a version number such as 0.6.2; {percent} is a whole number from 0 to 100." }
 installing = { text = "Installing v{version}…", context = "{version} is a version number such as 0.6.2." }
-previous_versions = "View previous versions"
 restart_to_update = { text = "Restart to update to v{version}", context = "{version} is a version number such as 0.6.2." }
 sign_in = { text = "Sign In", max_px = 180, size = 13 }
 sign_out = { text = "Sign Out", max_px = 180, size = 13 }

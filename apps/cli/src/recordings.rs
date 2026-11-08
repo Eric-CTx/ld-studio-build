@@ -11,7 +11,7 @@ use crate::{OutputFormat, write_json};
 
 // The desktop app's bundle identifier (`identifier` in apps/desktop-gpui/tauri.conf.json). Dev
 // builds of 0.6.0 and earlier used `so.cap.desktop.dev`, which the user can reach with `--dir`.
-const DESKTOP_BUNDLE_IDENTIFIER: &str = "so.cap.desktop";
+const DESKTOP_BUNDLE_IDENTIFIER: &str = "cn.lingdong.recorder";
 
 fn library_dirs(app_data: &Path) -> Vec<PathBuf> {
     let store = std::fs::read(app_data.join("store"))

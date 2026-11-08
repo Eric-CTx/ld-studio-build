@@ -26,7 +26,6 @@ settings = "Ajustes…"
 
 [menu.about]
 licensed = "Con licencia AGPL-3.0"
-website = "Sitio web"
 commit = "Commit"
 
 [menu.file]
@@ -60,13 +59,6 @@ zoom = "Zoom"
 title = "Ayuda"
 feedback = "Enviar comentarios…"
 changelog = "Registro de cambios"
-dashboard = "Panel"
-documentation = "Documentación"
-faq = "Preguntas frecuentes"
-self_hosting = "Alojamiento propio"
-help_center = "Centro de ayuda"
-system_status = "Estado del sistema"
-discord = "Unirse a la comunidad de Discord"
 
 [tray]
 import_media = "Importar contenido..."
@@ -278,7 +270,6 @@ click_to_sign_in = "Inicia sesión"
 downloading = "Descargando v{version}…"
 downloading_progress = "Descargando v{version}… {percent} %"
 installing = "Instalando v{version}…"
-previous_versions = "Ver versiones anteriores"
 restart_to_update = "Reinicia para actualizar a v{version}"
 sign_in = "Iniciar sesión"
 sign_out = "Cerrar sesión"

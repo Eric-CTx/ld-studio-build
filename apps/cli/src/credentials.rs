@@ -19,7 +19,7 @@ const AGENT_KEYRING_SERVICE: &str = "so.cap.cli";
 const AGENT_KEYRING_USER: &str = "agent-api";
 const AGENT_GRANTS_KEYRING_USER: &str = "agent-access-grants";
 // Prod first, then the dev bundle, so a released install wins on a machine that has both.
-const DESKTOP_BUNDLE_IDS: [&str; 2] = ["so.cap.desktop", "so.cap.desktop.dev"];
+const DESKTOP_BUNDLE_IDS: [&str; 2] = ["cn.lingdong.recorder", "cn.lingdong.recorder.dev"];
 
 #[derive(Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
