@@ -184,7 +184,7 @@ const DEFAULT_LOG_FILTER: &str =
 /// stdout, plus a rolling daily file the Feedback page can upload.
 ///
 /// Mirrors `src-tauri/src/main.rs`: `tracing_appender::rolling::daily` into
-/// `~/Library/Logs/so.cap.desktop` on macOS (the directory the Tauri app
+/// `~/Library/Logs/cn.lingdong.recorder` on macOS (the directory the Tauri app
 /// already writes into) under a **different** filename prefix, so the two apps
 /// never interleave lines into one file. Returns the non-blocking writer's
 /// guard, which has to outlive `main` or the last lines never reach the disk.

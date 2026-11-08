@@ -648,7 +648,10 @@ fn system_default_follows_the_system_language_and_a_choice_overrides_it() {
 
 #[test]
 fn stored_preferences_round_trip_and_unknown_values_follow_the_system() {
-    assert_eq!(Preference::from_setting(None), Preference::System);
+    assert_eq!(
+        Preference::from_setting(None),
+        Preference::Fixed(Locale::ZhCn)
+    );
     assert_eq!(Preference::from_setting(Some("system")), Preference::System);
     assert_eq!(Preference::from_setting(Some("pt-BR")), Preference::System);
     assert_eq!(Preference::System.setting(), "system");

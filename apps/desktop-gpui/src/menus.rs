@@ -137,13 +137,6 @@ actions!(
         OpenFile,
         ImportMedia,
         Changelog,
-        HelpDashboard,
-        HelpDocs,
-        HelpFaq,
-        HelpSelfHosting,
-        HelpCenter,
-        HelpStatus,
-        HelpDiscord,
         HelpFeedback,
         /// `PredefinedMenuItem::close_window` -- ⌘W. Present twice in the
         /// Tauri menu (File and Window), one action either way.
@@ -205,15 +198,6 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &Changelog, cx: &mut App| {
         app_windows::open_settings(crate::settings_window::Page::Changelog, cx)
     });
-    cx.on_action(|_: &HelpDashboard, cx: &mut App| {
-        cx.open_url(&format!("{}/dashboard", crate::auth::server_url()));
-    });
-    cx.on_action(|_: &HelpDocs, cx: &mut App| cx.open_url("https://cap.so/docs"));
-    cx.on_action(|_: &HelpFaq, cx: &mut App| cx.open_url("https://cap.so/faq"));
-    cx.on_action(|_: &HelpSelfHosting, cx: &mut App| cx.open_url("https://cap.so/self-hosting"));
-    cx.on_action(|_: &HelpCenter, cx: &mut App| cx.open_url("https://help.cap.so/"));
-    cx.on_action(|_: &HelpStatus, cx: &mut App| cx.open_url("https://cap.openstatus.dev/"));
-    cx.on_action(|_: &HelpDiscord, cx: &mut App| cx.open_url("https://cap.link/discord"));
     cx.on_action(|_: &HelpFeedback, cx: &mut App| {
         app_windows::open_settings(crate::settings_window::Page::Feedback, cx)
     });
@@ -439,14 +423,6 @@ pub fn build_menus(update_status: &updates::UpdateStatus, settings_enabled: bool
                 MenuItem::action(tr::menu::help::feedback(), HelpFeedback),
                 MenuItem::separator(),
                 MenuItem::action(tr::menu::help::changelog(), Changelog),
-                MenuItem::separator(),
-                MenuItem::action(tr::menu::help::dashboard(), HelpDashboard),
-                MenuItem::action(tr::menu::help::documentation(), HelpDocs),
-                MenuItem::action(tr::menu::help::faq(), HelpFaq),
-                MenuItem::action(tr::menu::help::self_hosting(), HelpSelfHosting),
-                MenuItem::action(tr::menu::help::help_center(), HelpCenter),
-                MenuItem::action(tr::menu::help::system_status(), HelpStatus),
-                MenuItem::action(tr::menu::help::discord(), HelpDiscord),
             ],
         },
     ]
@@ -959,41 +935,6 @@ fn visible_window_classes(cx: &mut App) -> (bool, bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[gpui::test]
-    fn dashboard_menu_uses_the_current_server(cx: &mut gpui::TestAppContext) {
-        let directory = tempfile::tempdir().unwrap();
-        store::set_test_tauri_store_path(Some(directory.path().join("store.json")));
-        cx.update(init);
-        let cases = [
-            (None, "https://cap.so/dashboard"),
-            (
-                Some("https://cap.example.com/"),
-                "https://cap.example.com/dashboard",
-            ),
-            (
-                Some("http://localhost:3000"),
-                "http://localhost:3000/dashboard",
-            ),
-            (Some(""), "https://cap.so/dashboard"),
-        ];
-        let mut opened = Vec::new();
-        for (server, _) in cases {
-            if let Some(server) = server {
-                assert!(store::set_store_setting(
-                    store::GENERAL_SETTINGS,
-                    "serverUrl",
-                    serde_json::Value::String(server.into()),
-                ));
-            }
-            cx.update(|cx| cx.dispatch_action(&HelpDashboard));
-            opened.push(cx.opened_url());
-        }
-        store::set_test_tauri_store_path(None);
-        for (actual, (_, expected)) in opened.iter().zip(cases) {
-            assert_eq!(actual.as_deref(), Some(expected));
-        }
-    }
 
     #[test]
     fn quit_waits_for_recording_ui_restoration() {

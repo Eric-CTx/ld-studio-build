@@ -1064,7 +1064,7 @@ fn drain_decode_jobs<J, R>(
 
 /// Where the shared downscaled-thumbnail cache lives: the OS cache dir under
 /// this app's own identifier (cache data is regenerable, so it belongs where
-/// backups and migration skip it), not the `so.cap.desktop` app-data dir both
+/// backups and migration skip it), not the `cn.lingdong.recorder` app-data dir both
 /// apps share.
 fn thumbnail_cache_dir() -> PathBuf {
     // Verification runs point CAP_GPUI_APP_DATA_DIR at a sandbox; a cache that
@@ -1074,7 +1074,7 @@ fn thumbnail_cache_dir() -> PathBuf {
     }
     dirs::cache_dir().map_or_else(
         || crate::store::app_data_dir().join("thumbnail-cache"),
-        |base| base.join("so.cap.desktop.gpui").join("thumbnails"),
+        |base| base.join("cn.lingdong.recorder.gpui").join("thumbnails"),
     )
 }
 

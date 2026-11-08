@@ -252,7 +252,7 @@ fn staging_root() -> PathBuf {
     }
     dirs::cache_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join("so.cap.desktop")
+        .join("cn.lingdong.recorder")
         .join("updates")
 }
 

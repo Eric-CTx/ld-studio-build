@@ -2,7 +2,7 @@
 //! 0.6.0 and earlier (the Tauri app, still downloadable and able to open the
 //! same data after a downgrade).
 //!
-//! Two files, both inside `so.cap.desktop`'s app-data dir:
+//! Two files, both inside `cn.lingdong.recorder`'s app-data dir:
 //!
 //! - `gpui-state.json` -- ours. The Tauri app kept the camera window's chrome
 //!   state in the webview's `localStorage` (`cameraWindowState`); there is no
@@ -154,9 +154,9 @@ pub struct ExportPrefs {
     pub turbo: bool,
 }
 
-/// `so.cap.desktop`'s app-data dir -- where both stores live.
+/// `cn.lingdong.recorder`'s app-data dir -- where both stores live.
 ///
-/// The identifier every Cap release has used (`so.cap.desktop`), resolved
+/// The identifier every Cap release has used (`cn.lingdong.recorder`), resolved
 /// the way each OS's app-data convention spells it, so recordings and
 /// settings from 0.6.0 and earlier are found where those builds left them.
 pub fn app_data_dir() -> PathBuf {
@@ -169,14 +169,14 @@ pub fn app_data_dir() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
         PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()))
-            .join("Library/Application Support/so.cap.desktop")
+            .join("Library/Application Support/cn.lingdong.recorder")
     }
     #[cfg(target_os = "windows")]
     {
         std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("so.cap.desktop")
+            .join("cn.lingdong.recorder")
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
@@ -186,7 +186,7 @@ pub fn app_data_dir() -> PathBuf {
                 PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| ".".into()))
                     .join(".local/share")
             });
-        base.join("so.cap.desktop")
+        base.join("cn.lingdong.recorder")
     }
 }
 

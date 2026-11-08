@@ -765,7 +765,6 @@ mod mac {
                 tr::menu::about::licensed().into(),
                 Some("https://github.com/CapSoftware/Cap/blob/main/LICENSE"),
             ),
-            (tr::menu::about::website().into(), Some("https://cap.so")),
         ]
     }
 

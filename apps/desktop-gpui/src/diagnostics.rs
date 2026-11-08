@@ -66,10 +66,10 @@ const INSTALLED_APP: &str = "/Applications/Cap.app";
 
 /// Where the rolling file log lives.
 ///
-/// macOS uses `~/Library/Logs/so.cap.desktop` -- the same directory the Tauri
+/// macOS uses `~/Library/Logs/cn.lingdong.recorder` -- the same directory the Tauri
 /// app writes into, so a user handing over "the Cap logs folder" hands over
 /// both apps' logs -- and every other platform uses
-/// `<local data>/so.cap.desktop/logs`, matching `main.rs` over there.
+/// `<local data>/cn.lingdong.recorder/logs`, matching `main.rs` over there.
 pub fn logs_dir() -> PathBuf {
     if let Ok(directory) = std::env::var("CAP_GPUI_LOG_DIR")
         && !directory.trim().is_empty()
@@ -81,13 +81,13 @@ pub fn logs_dir() -> PathBuf {
         dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("Library/Logs")
-            .join("so.cap.desktop")
+            .join("cn.lingdong.recorder")
     }
     #[cfg(not(target_os = "macos"))]
     {
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("so.cap.desktop")
+            .join("cn.lingdong.recorder")
             .join("logs")
     }
 }

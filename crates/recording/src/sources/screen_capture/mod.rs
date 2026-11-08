@@ -732,7 +732,7 @@ pub fn is_listable_macos_window(
     }
 
     let is_third_party_bundle = bundle_identifier.is_some_and(|identifier| {
-        !identifier.starts_with("com.apple.") && !identifier.starts_with("so.cap.desktop")
+        !identifier.starts_with("com.apple.") && !identifier.starts_with("cn.lingdong.recorder")
     });
 
     if is_accessory_application {
@@ -742,7 +742,7 @@ pub fn is_listable_macos_window(
     }
 
     level == Some(MACOS_FLOATING_WINDOW_LEVEL)
-        && bundle_identifier.is_some_and(|identifier| !identifier.starts_with("so.cap.desktop"))
+        && bundle_identifier.is_some_and(|identifier| !identifier.starts_with("cn.lingdong.recorder"))
 }
 
 pub fn list_windows() -> Vec<(CaptureWindow, Window)> {
@@ -954,7 +954,7 @@ mod tests {
         assert!(!is_listable_macos_window(
             Some(3),
             "Cap",
-            Some("so.cap.desktop.dev"),
+            Some("cn.lingdong.recorder.dev"),
             true,
             true,
         ));
@@ -994,7 +994,7 @@ mod tests {
         assert!(!is_listable_macos_window(
             Some(MACOS_FLOATING_WINDOW_LEVEL),
             "Cap",
-            Some("so.cap.desktop.dev"),
+            Some("cn.lingdong.recorder.dev"),
             false,
             false,
         ));
@@ -1053,7 +1053,7 @@ mod tests {
             for bundle in [
                 None,
                 Some("com.apple.controlcenter"),
-                Some("so.cap.desktop.dev"),
+                Some("cn.lingdong.recorder.dev"),
             ] {
                 for include_accessory_panels in [false, true] {
                     assert!(!is_listable_macos_window(

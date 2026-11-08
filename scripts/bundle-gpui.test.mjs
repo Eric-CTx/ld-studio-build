@@ -40,9 +40,9 @@ test("targets map to their packaging platform and main binary", () => {
 });
 
 test("the GPUI app keeps the identity every existing install updates into", () => {
-	assert.equal(gpuiConfig.productName, "Cap");
+	assert.equal(gpuiConfig.productName, "灵动录屏");
 	assert.equal(gpuiConfig.mainBinaryName, "Cap");
-	assert.equal(gpuiConfig.identifier, "so.cap.desktop");
+	assert.equal(gpuiConfig.identifier, "cn.lingdong.recorder");
 	assert.equal(gpuiConfig.plugins.updater.pubkey, shippedUpdaterPubkey);
 	assert.deepEqual(gpuiConfig.plugins.updater.endpoints, [
 		"https://cdn.crabnebula.app/update/cap/cap/{{target}}/{{current_version}}",
@@ -57,9 +57,7 @@ test("the GPUI app keeps the identity every existing install updates into", () =
 			`const UPDATER_PUBLIC_KEY: &str = "${gpuiConfig.plugins.updater.pubkey}";`,
 		),
 	);
-	assert.deepEqual(gpuiConfig.plugins["deep-link"], {
-		desktop: { schemes: ["cap-desktop"] },
-	});
+	assert.equal(gpuiConfig.plugins["deep-link"], undefined);
 	assert.equal(gpuiConfig.bundle.createUpdaterArtifacts, true);
 });
 

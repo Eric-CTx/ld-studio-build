@@ -41,13 +41,15 @@ pub enum Preference {
 }
 
 impl Preference {
-    /// Absent, `"system"` and codes this build has no catalog for (written by
-    /// a newer build, or `pseudo` from a debug one) all follow the system.
-    /// The stored value is left as it is until the picker writes a new one.
+    /// Absent means Simplified Chinese. `"system"` and codes this build has no
+    /// catalog for (written by a newer build, or `pseudo` from a debug one)
+    /// follow the system. The stored value is left as it is until the picker
+    /// writes a new one.
     pub fn from_setting(value: Option<&str>) -> Self {
-        value
-            .and_then(Locale::from_code)
-            .map_or(Self::System, Self::Fixed)
+        match value {
+            None => Self::Fixed(Locale::ZhCn),
+            Some(code) => Locale::from_code(code).map_or(Self::System, Self::Fixed),
+        }
     }
 
     pub fn setting(self) -> &'static str {

@@ -8578,7 +8578,7 @@ mod tests {
     fn rules_that_need_more_than_a_title_never_match_our_windows() {
         let by_identity = vec![
             WindowExclusion {
-                bundle_identifier: Some("so.cap.desktop".to_string()),
+                bundle_identifier: Some("cn.lingdong.recorder".to_string()),
                 ..Default::default()
             },
             WindowExclusion {

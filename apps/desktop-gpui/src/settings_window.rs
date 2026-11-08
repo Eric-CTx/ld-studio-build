@@ -1995,9 +1995,7 @@ impl SettingsWindow {
                     ),
             )
             .on_click(cx.listener(|this, _, window, cx| {
-                if store::auth_snapshot().signed_in() {
-                    cx.open_url(&format!("{}/dashboard", crate::auth::server_url()));
-                } else {
+                if !store::auth_snapshot().signed_in() {
                     this.toggle_sign_in(window, cx);
                 }
             }))
@@ -2117,13 +2115,6 @@ impl SettingsWindow {
                     .py(px(2.))
                     .rounded(px(4.))
                     .child(format!("v{}", env!("CARGO_PKG_VERSION"))),
-            )
-            .child(
-                div()
-                    .id("settings-previous-versions")
-                    .child(tr::settings::sidebar::previous_versions())
-                    .hover(|style| style.text_color(theme.settings_text()))
-                    .on_click(|_, _, cx| cx.open_url("https://cap.so/download/versions")),
             )
             .child(
                 div()

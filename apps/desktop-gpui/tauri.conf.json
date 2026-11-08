@@ -1,19 +1,14 @@
 {
 	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "Cap",
+	"productName": "灵动录屏",
 	"mainBinaryName": "Cap",
-	"identifier": "so.cap.desktop",
+	"identifier": "cn.lingdong.recorder",
 	"plugins": {
 		"updater": {
 			"endpoints": [
 				"https://cdn.crabnebula.app/update/cap/cap/{{target}}/{{current_version}}"
 			],
 			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUyOTAzOTdFNzJFQkRFOTMKUldTVDN1dHlmam1RNHFXb1VYTXlrQk1iMFFkcjN0YitqZlA5WnZNY0ZtQ1dvM1dxK211M3VIYUQK"
-		},
-		"deep-link": {
-			"desktop": {
-				"schemes": ["cap-desktop"]
-			}
 		}
 	},
 	"bundle": {
