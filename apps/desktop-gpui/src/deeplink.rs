@@ -368,7 +368,7 @@ impl DeepLinkAction {
 
                 let mode = match mode {
                     cap_recording::RecordingMode::Studio => recording::RecordingMode::Studio,
-                    cap_recording::RecordingMode::Instant => recording::RecordingMode::Instant,
+                    cap_recording::RecordingMode::Instant => recording::RecordingMode::Studio,
                     // The Tauri parser admits it and its `start_recording`
                     // refuses it (`recording.rs:1699-1704`); same split here.
                     cap_recording::RecordingMode::Screenshot => {

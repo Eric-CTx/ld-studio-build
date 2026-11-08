@@ -278,7 +278,7 @@ fn without_ansi(line: &str) -> String {
 
 /// A normal Instant recording uploads, verifies, and leaves nothing for the
 /// cleanup journal.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_instant_recording_uploads_and_verifies() {
     let mock = MockCap::start(Vec::new()).await;
@@ -315,7 +315,7 @@ async fn real_app_instant_recording_uploads_and_verifies() {
 /// bad frame stops the recording. Runs only with `CAP_GPUI_REAL_APP_CAMERA=1`,
 /// since it needs a camera attached; the CI job feeds a virtual one and checks
 /// its picture reached the video.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_instant_recording_with_camera_uploads_and_verifies() {
     if std::env::var("CAP_GPUI_REAL_APP_CAMERA").is_err() {
@@ -406,7 +406,7 @@ async fn real_app_instant_recording_with_camera_uploads_and_verifies() {
 /// restores the window through its clean-capture lease instead, so the check
 /// is macOS only.
 #[cfg(target_os = "macos")]
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_instant_outcome_decides_whether_main_window_returns() {
     for (name, disable_open, show_main, returns) in [
@@ -453,7 +453,7 @@ async fn real_app_instant_outcome_decides_whether_main_window_returns() {
 /// held media keeps its folder, its media and its server video, and every
 /// crashed recording that held none in a folder still in progress has its
 /// server video deleted.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_crashes_never_delete_a_recording_with_media() {
     struct Crashed {
@@ -526,7 +526,7 @@ async fn real_app_crashes_never_delete_a_recording_with_media() {
 
 /// Kills the app mid-recording with media saved, then relaunches and presses
 /// Recover: the recovered recording uploads under the same video id.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_recovered_recording_uploads() {
     let mock = MockCap::start(Vec::new()).await;
@@ -583,7 +583,7 @@ async fn real_app_recovered_recording_uploads() {
 /// it created is deleted and nothing is left behind. A stop that lands after
 /// capture began exercises nothing, so the case retries until one lands
 /// during the start, and fails if none does.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_cancelled_start_deletes_its_video() {
     let mock = MockCap::start(Vec::new()).await;
@@ -627,7 +627,7 @@ async fn real_app_cancelled_start_deletes_its_video() {
 /// takes are still uploading. The cue must wait for capture too: it used to
 /// play and arm the start gate long before the pipeline existed, so the
 /// opening words of the take were never recorded.
-#[ignore]
+#[ignore = "上游 Instant 云上传测试；本分支强制 Studio，不适用"]
 #[tokio::test(flavor = "multi_thread")]
 async fn real_app_start_cue_waits_for_a_slow_server_video() {
     let mock = MockCap::start(vec![rule(

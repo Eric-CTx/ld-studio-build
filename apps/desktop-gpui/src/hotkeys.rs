@@ -992,7 +992,7 @@ fn dispatch(action: HotkeyAction, pressed_at: std::time::Instant, cx: &mut App) 
                 .update(cx, |session, cx| session.add_marker(pressed_at, cx));
         }
         HotkeyAction::StartStudioRecording => start_from_hotkey(Mode::Studio, cx),
-        HotkeyAction::StartInstantRecording => start_from_hotkey(Mode::Instant, cx),
+        HotkeyAction::StartInstantRecording => start_from_hotkey(Mode::Studio, cx),
         HotkeyAction::StopRecording => {
             RecordingSession::global(cx).update(cx, |session, cx| session.stop(cx));
         }
@@ -1003,10 +1003,8 @@ fn dispatch(action: HotkeyAction, pressed_at: std::time::Instant, cx: &mut App) 
             RecordingSession::global(cx).update(cx, |session, cx| session.toggle_pause(cx));
         }
         HotkeyAction::CycleRecordingMode => {
-            // `Studio -> Instant -> Screenshot -> Studio` (`hotkeys.rs:262`).
             let next = match Mode::from_store() {
-                Mode::Studio => Mode::Instant,
-                Mode::Instant => Mode::Screenshot,
+                Mode::Studio | Mode::Instant => Mode::Screenshot,
                 Mode::Screenshot => Mode::Studio,
             };
             app_windows::set_recording_mode(next, cx);

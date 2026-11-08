@@ -4032,6 +4032,9 @@ pub fn handle_clean_capture_shortcut(state: global_hotkey::HotKeyState, cx: &mut
 /// The whole start flow: bar up (in its Starting state), main window hidden,
 /// engine started with the bar excluded from capture.
 pub fn begin_recording(mut config: StartConfig, cx: &mut App) {
+    if config.mode == RecordingMode::Instant {
+        config.mode = RecordingMode::Studio;
+    }
     let session = RecordingSession::global(cx);
     if session.read(cx).phase != Phase::Idle {
         return;

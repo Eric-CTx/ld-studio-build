@@ -761,6 +761,7 @@ fn take_display_screenshot(cx: &mut App) {
 /// live in `MainWindow::set_mode` here, which every mode affordance funnels
 /// through, so this is `app_windows::set_recording_mode` and nothing else.
 fn set_mode(mode: Mode, cx: &mut App) {
+    let mode = mode.local();
     app_windows::set_recording_mode(mode, cx);
     // `MainWindow::set_mode` short-circuits when the mode is unchanged, so
     // refresh here too: the tray must end up consistent whichever way it got

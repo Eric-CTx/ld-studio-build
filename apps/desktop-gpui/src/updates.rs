@@ -1,6 +1,5 @@
 use std::{path::PathBuf, time::Duration};
 
-use futures_util::future::{Either, select};
 use gpui::{App, Global};
 use semver::Version;
 
@@ -183,41 +182,7 @@ fn set_status(status: UpdateStatus, cx: &mut App) {
     crate::menus::refresh_update_menu(cx);
 }
 
-pub(crate) fn check_manually(cx: &mut App) {
-    if !cx.has_global::<UpdateScheduler>() {
-        return;
-    }
-
-    match status(cx) {
-        UpdateStatus::Ready { .. } | UpdateStatus::Installed { .. } => {
-            prompt_restart(cx);
-            return;
-        }
-        UpdateStatus::Available { version } => {
-            simulate_download(version, cx);
-            return;
-        }
-        UpdateStatus::Downloading { version, .. } | UpdateStatus::Installing { version } => {
-            cx.spawn(async move |_| {
-                crate::platform::activate_app();
-                crate::platform::alert_dialog(
-                    tr::dialog::update::title(),
-                    &tr::dialog::update::already_getting(version),
-                );
-            })
-            .detach();
-            return;
-        }
-        UpdateStatus::Idle | UpdateStatus::Checking => {}
-    }
-
-    let scheduler = cx.global_mut::<UpdateScheduler>();
-    if !scheduler.pending.request_manual(scheduler.manual_in_flight) {
-        return;
-    }
-
-    let _ = scheduler.wake.try_send(());
-}
+pub(crate) fn check_manually(_cx: &mut App) {}
 
 pub(crate) fn update_channel_changed(channel: UpdateChannel, cx: &mut App) {
     if !cx.has_global::<UpdateScheduler>() {
@@ -362,7 +327,7 @@ fn simulate_download(version: Version, cx: &mut App) {
 fn simulate_download(_version: Version, _cx: &mut App) {}
 
 pub(crate) fn schedule_startup_check(cx: &mut App) {
-    let (wake, requests) = flume::bounded(1);
+    let (wake, _requests) = flume::bounded(1);
     cx.set_global(UpdateScheduler {
         wake,
         pending: PendingUpdateRequests::default(),
@@ -373,217 +338,6 @@ pub(crate) fn schedule_startup_check(cx: &mut App) {
         download: None,
         download_epoch: 0,
     });
-
-    #[cfg(debug_assertions)]
-    if let Some(version) = harness_update_version() {
-        simulate_update(version, cx);
-        return;
-    }
-    #[cfg(not(debug_assertions))]
-    if std::env::var_os("CAP_GPUI_UPDATE_SIMULATION_VERSION").is_some() {
-        tracing::warn!("CAP_GPUI_UPDATE_SIMULATION_VERSION is ignored in release builds");
-    }
-
-    cx.spawn(async move |cx| {
-        let mut channel = cx
-            .background_executor()
-            .spawn(async { GeneralSettings::load().update_channel })
-            .await;
-        let mut policy = cx.update(|cx| cx.global::<UpdateScheduler>().download_policy);
-        let mut delay = if policy == UpdateDownloadPolicy::Never {
-            None
-        } else {
-            (!cfg!(debug_assertions)).then(|| first_check_delay(channel))
-        };
-        let mut ignored_version: Option<Version> = None;
-
-        loop {
-            let signaled = match delay {
-                Some(delay) => {
-                    let timer = cx.background_executor().timer(delay);
-                    let request = requests.recv_async();
-                    futures_util::pin_mut!(timer, request);
-                    match select(timer, request).await {
-                        Either::Left(_) => false,
-                        Either::Right((Ok(()), _)) => true,
-                        Either::Right((Err(_), _)) => return,
-                    }
-                }
-                None => {
-                    if requests.recv_async().await.is_err() {
-                        return;
-                    }
-                    true
-                }
-            };
-
-            let request = cx.update(|cx| {
-                let scheduler = cx.global_mut::<UpdateScheduler>();
-                std::mem::take(&mut scheduler.pending)
-            });
-
-            let policy_now = cx.update(|cx| cx.global::<UpdateScheduler>().download_policy);
-            if policy_now != policy {
-                let was_never = policy == UpdateDownloadPolicy::Never;
-                policy = policy_now;
-                // Moving between Ask first and Auto keeps the schedule, so a
-                // switch before the first check does not cancel it.
-                if policy == UpdateDownloadPolicy::Never {
-                    delay = None;
-                } else if was_never {
-                    delay = Some(first_check_delay(channel));
-                }
-            }
-
-            if signaled && request == PendingUpdateRequests::default() {
-                continue;
-            }
-
-            if let Some(next_channel) = request.channel {
-                channel = next_channel;
-                ignored_version = None;
-                cx.update(drop_pending_update_from_previous_channel);
-            }
-
-            let manual = request.manual;
-            if policy == UpdateDownloadPolicy::Never && !manual {
-                delay = None;
-                continue;
-            }
-            if cfg!(debug_assertions) && !manual {
-                delay = None;
-                continue;
-            }
-
-            if manual {
-                cx.update(|cx| cx.global_mut::<UpdateScheduler>().manual_in_flight = true);
-            }
-
-            delay = next_check_delay(channel);
-
-            if cx.update(|cx| status(cx) != UpdateStatus::Idle) {
-                cx.update(|cx| finish_manual_check(cx, manual));
-                continue;
-            }
-
-            cx.update(|cx| set_status(UpdateStatus::Checking, cx));
-
-            let result = match cx
-                .update(|cx| gpui_tokio::Tokio::spawn(cx, available_release(channel)))
-                .await
-            {
-                Ok(result) => result,
-                Err(error) => Err(error.to_string()),
-            };
-
-            let superseded = cx.update(|cx| {
-                let scheduler = cx.global_mut::<UpdateScheduler>();
-                let channel_changed = scheduler.pending.channel.is_some();
-                if channel_changed && manual {
-                    scheduler.pending.manual = true;
-                    scheduler.manual_in_flight = false;
-                }
-                channel_changed || (!manual && scheduler.pending.manual)
-            });
-            if superseded {
-                cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                continue;
-            }
-
-            let release = match result {
-                Ok(Some(release)) => release,
-                Ok(None) => {
-                    cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                    if manual {
-                        crate::platform::activate_app();
-                        crate::platform::alert_dialog(
-                            tr::dialog::update::no_update_title(),
-                            tr::dialog::update::no_update(),
-                        );
-                        cx.update(|cx| finish_manual_check(cx, true));
-                    }
-                    continue;
-                }
-                Err(error) => {
-                    cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                    tracing::warn!("update check failed: {error}");
-                    if manual {
-                        crate::platform::activate_app();
-                        crate::platform::alert_dialog(
-                            tr::dialog::update::title(),
-                            &tr::dialog::update::check_failed(error),
-                        );
-                        cx.update(|cx| finish_manual_check(cx, true));
-                    }
-                    continue;
-                }
-            };
-
-            if !manual && ignored_version.as_ref() == Some(&release.version) {
-                cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                continue;
-            }
-
-            // The prompt is modal and brings Cap forward, so an automatic
-            // check holds it until a recording, export, import or
-            // transcription has finished rather than interrupting it.
-            let mut superseded = false;
-            if holds_scheduled_prompt(manual, cx.update(work_in_flight)) {
-                // Leave the menu's Check for Update row usable for the length
-                // of a recording; a manual check replaces the held prompt.
-                cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-            }
-            while holds_scheduled_prompt(manual, cx.update(work_in_flight)) {
-                let timer = cx.background_executor().timer(BUSY_RETRY_DELAY);
-                let request = requests.recv_async();
-                futures_util::pin_mut!(timer, request);
-                if let Either::Right((Err(_), _)) = select(timer, request).await {
-                    return;
-                }
-                superseded =
-                    cx.update(|cx| supersedes_held_prompt(&cx.global::<UpdateScheduler>().pending));
-                if superseded {
-                    break;
-                }
-            }
-            if superseded {
-                // Run the queued manual check or channel change straight away.
-                cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                delay = Some(Duration::ZERO);
-                continue;
-            }
-
-            let policy = cx.update(|cx| cx.global::<UpdateScheduler>().download_policy);
-            if policy == UpdateDownloadPolicy::Never && !manual {
-                cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-                delay = next_check_delay(channel);
-                continue;
-            }
-            if policy == UpdateDownloadPolicy::Auto {
-                cx.update(|cx| finish_manual_check(cx, manual));
-                cx.update(|cx| start_download(release, cx));
-                continue;
-            }
-
-            cx.update(|cx| set_status(UpdateStatus::Idle, cx));
-
-            crate::platform::activate_app();
-            let accepted = crate::platform::confirm_dialog(
-                tr::dialog::update::title(),
-                &tr::dialog::update::available(&release.version),
-                tr::dialog::update::download(),
-                tr::dialog::update::not_now(),
-                false,
-            );
-            cx.update(|cx| finish_manual_check(cx, manual));
-            if accepted {
-                cx.update(|cx| start_download(release, cx));
-            } else {
-                ignored_version = Some(release.version);
-            }
-        }
-    })
-    .detach();
 }
 
 pub(crate) fn update_download_policy_changed(policy: UpdateDownloadPolicy, cx: &mut App) {

@@ -111,7 +111,7 @@ fn effective_recording_mode(preferred: Mode, editor_recording: bool) -> Mode {
     if editor_recording {
         Mode::Studio
     } else {
-        preferred
+        preferred.local()
     }
 }
 
@@ -135,13 +135,19 @@ impl Mode {
         }
     }
 
-    /// `get_current_mode` (`src-tauri/src/tray.rs:355-361`): the stored mode,
-    /// falling back to `RecordingMode::default()`, which is Instant.
     pub fn from_store() -> Self {
         crate::store::recording_mode_slug()
             .as_deref()
             .and_then(Self::from_slug)
-            .unwrap_or(Self::Instant)
+            .unwrap_or(Self::Studio)
+            .local()
+    }
+
+    pub fn local(self) -> Self {
+        match self {
+            Self::Instant => Self::Studio,
+            mode => mode,
+        }
     }
 
     pub fn icon(self) -> &'static str {
@@ -2035,6 +2041,7 @@ impl MainWindow {
     /// select window all land here, so there is one place a mode change
     /// happens.
     pub fn set_mode(&mut self, mode: Mode, cx: &mut Context<Self>) {
+        let mode = mode.local();
         self.clear_mode_hover();
         cx.notify();
         if self.mode == mode
@@ -2125,7 +2132,7 @@ impl MainWindow {
         let overlay = auto_overlay_kind();
         let area = auto_area_rect();
 
-        self.mode = mode;
+        self.mode = mode.local();
         self.target = Some(overlay.unwrap_or(TargetType::Display));
         self.system_audio =
             std::env::var("CAP_GPUI_AUTO_SYSTEM_AUDIO").is_ok_and(|value| value == "1");
@@ -7619,10 +7626,14 @@ mod recording_start_permit_tests {
     }
 
     #[test]
-    fn editor_recording_mode_does_not_change_the_normal_preference() {
-        for preferred in [Mode::Instant, Mode::Studio, Mode::Screenshot] {
+    fn recording_modes_keep_capture_local() {
+        for (preferred, expected) in [
+            (Mode::Instant, Mode::Studio),
+            (Mode::Studio, Mode::Studio),
+            (Mode::Screenshot, Mode::Screenshot),
+        ] {
             assert_eq!(effective_recording_mode(preferred, true), Mode::Studio);
-            assert_eq!(effective_recording_mode(preferred, false), preferred);
+            assert_eq!(effective_recording_mode(preferred, false), expected);
         }
     }
 }

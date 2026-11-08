@@ -1455,7 +1455,7 @@ impl GeneralSettings {
             update_channel: enum_at(general, "updateChannel"),
             update_download_policy: enum_at(general, "updateDownloadPolicy"),
             server_url: string_at(general, "serverUrl", DEFAULT_SERVER_URL),
-            enable_telemetry: bool_at(general, "enableTelemetry", true),
+            enable_telemetry: bool_at(general, "enableTelemetry", false),
             editor_preview_quality: enum_at(general, "editorPreviewQuality"),
             editor_preview_speed: general
                 .get(EDITOR_PREVIEW_SPEED_KEY)

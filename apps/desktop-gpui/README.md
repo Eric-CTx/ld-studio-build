@@ -126,8 +126,12 @@ update in place would otherwise leave behind.
 
 ### The native updater
 
-`src/updates.rs` checks the CrabNebula endpoint on the same cadence the
-Tauri app used, and `src/installer.rs` does the rest without Tauri:
+本分支的灵动录屏已停用自动和手动更新检查，启动时仅初始化空闲状态；
+录制模式限定为 Studio 或截图，遥测默认关闭。以下保留的上游更新流程
+不在本分支运行。
+
+In upstream Cap, `src/updates.rs` checks the CrabNebula endpoint on the same
+cadence the Tauri app used, and `src/installer.rs` does the rest without Tauri:
 
 1. **Download** streams the artifact to
    `<cache>/so.cap.desktop/updates/cap/<version>/` and verifies its minisign
