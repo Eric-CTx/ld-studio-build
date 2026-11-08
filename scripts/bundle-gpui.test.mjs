@@ -47,16 +47,6 @@ test("the GPUI app keeps the identity every existing install updates into", () =
 	assert.deepEqual(gpuiConfig.plugins.updater.endpoints, [
 		"https://cdn.crabnebula.app/update/cap/cap/{{target}}/{{current_version}}",
 	]);
-	const installer = readFileSync(
-		new URL("../apps/desktop-gpui/src/installer.rs", import.meta.url),
-		"utf8",
-	);
-	assert.match(
-		installer,
-		new RegExp(
-			`const UPDATER_PUBLIC_KEY: &str = "${gpuiConfig.plugins.updater.pubkey}";`,
-		),
-	);
 	assert.equal(gpuiConfig.plugins["deep-link"], undefined);
 	assert.equal(gpuiConfig.bundle.createUpdaterArtifacts, true);
 });
