@@ -11,7 +11,6 @@ use gpui::{App, AppContext, Context, Entity, EventEmitter, Global, Task};
 
 use crate::auth;
 use crate::i18n::tr;
-use crate::main_window::TargetType;
 use crate::platform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +18,6 @@ pub enum SignInOrigin {
     Settings,
     Editor,
     ScreenshotEditor,
-    Overlay(TargetType),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,10 +72,6 @@ impl SignIn {
         self.attempt.is_some()
     }
 
-    pub fn pending_origin(&self) -> Option<SignInOrigin> {
-        self.attempt.as_ref().map(|attempt| attempt.origin)
-    }
-
     /// Open the browser sign-in. A second call while an attempt is pending
     /// re-opens that attempt's page (the user may have closed the tab) and
     /// moves the attempt to the newer origin.
@@ -107,15 +101,14 @@ impl SignIn {
             };
             drop(session);
 
-            let Ok(Some(origin)) = this.update(cx, |this, cx| this.finish(id, outcome.clone(), cx))
+            let Ok(Some(_)) = this.update(cx, |this, cx| this.finish(id, outcome.clone(), cx))
             else {
                 return;
             };
-            // After the update, not inside it: both re-enter the run loop. The
-            // main window's prompt shows its own failures inline.
+            // After the update, not inside it: both re-enter the run loop.
             match &outcome {
                 SignInOutcome::SignedIn => platform::activate_app(),
-                SignInOutcome::Failed(error) if !matches!(origin, SignInOrigin::Overlay(_)) => {
+                SignInOutcome::Failed(error) => {
                     platform::alert_dialog(tr::auth::sign_in_failed(), error)
                 }
                 _ => {}
@@ -143,12 +136,6 @@ impl SignIn {
             task,
         });
         cx.notify();
-    }
-
-    pub fn reopen(&mut self, cx: &mut Context<Self>) {
-        if let Some(attempt) = &self.attempt {
-            cx.open_url(&attempt.url);
-        }
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {

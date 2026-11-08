@@ -2482,17 +2482,6 @@ fn overlay_window_ids(cx: &mut App) -> Vec<scap_targets::WindowId> {
         .collect()
 }
 
-/// The overlay's "Sign In To Use": close the picker and put the sign-in
-/// prompt on the main window, brought forward even when the picker was opened
-/// from the tray with the main window closed.
-pub fn show_instant_sign_in(kind: crate::main_window::TargetType, cx: &mut App) {
-    dismiss_target_overlays(cx);
-    let main = cx.global::<AppWindows>().main;
-    main.update(cx, |view, _, cx| view.show_sign_in_prompt(kind, cx))
-        .ok();
-    show_main_window(cx);
-}
-
 /// How long Start waits for the picker's window moves to land. A move waits
 /// on the target app; one still pending after this does not start a
 /// recording of bounds that are about to change.

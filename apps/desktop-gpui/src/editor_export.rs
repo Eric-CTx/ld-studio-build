@@ -63,7 +63,7 @@ pub enum ExportDestination {
 }
 
 impl ExportDestination {
-    const ALL: &'static [Self] = &[Self::File, Self::Clipboard, Self::Link];
+    const ALL: &'static [Self] = &[Self::File, Self::Clipboard];
 
     fn label(self) -> &'static str {
         match self {
@@ -92,7 +92,7 @@ impl ExportDestination {
     fn from_slug(slug: &str) -> Self {
         match slug {
             "clipboard" => Self::Clipboard,
-            "link" => Self::Link,
+            // 本地版不提供云端分享，历史偏好中的 "link" 回落为本地文件导出。
             _ => Self::File,
         }
     }
@@ -528,44 +528,6 @@ fn decode_jpeg_bytes(bytes: &[u8]) -> Option<Arc<RenderImage>> {
 }
 
 impl EditorWindow {
-    pub(crate) fn render_reupload_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .rounded(px(8.))
-            .bg(Hsla::from(self.theme.blue_3))
-            .border_1()
-            .border_color(Hsla::from(self.theme.blue_5))
-            .child(
-                ui::EditorButton::plain(&self.theme, "editor-reupload")
-                    .left_icon("icons/cloud-upload.svg")
-                    .label(tr::editor::export::reupload())
-                    .tooltip(
-                        &self.theme,
-                        if has_transparent_background(&self.project) {
-                            tr::editor::export::reupload_transparent()
-                        } else {
-                            tr::editor::export::reupload_tooltip()
-                        },
-                    )
-                    .disabled(!self.project_ready() || has_transparent_background(&self.project))
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        if !this.project_ready() {
-                            return;
-                        }
-                        this.open_export(window, cx);
-                        if !has_transparent_background(&this.project)
-                            && let Some(ui) = this.export.as_mut()
-                        {
-                            ui.destination = ExportDestination::Link;
-                            ui.format = ExportFormatKind::Mp4;
-                            ui.cursor_only = false;
-                        }
-                        this.normalize_loaded_export_fps();
-                        this.refresh_export_preview(window, cx);
-                        cx.notify();
-                    })),
-            )
-    }
-
     pub(crate) fn open_export(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.playing {
             self.toggle_play_from_crop(cx);
@@ -1980,80 +1942,6 @@ impl EditorWindow {
                                 .cursor_pointer()
                                 .child(link.clone())
                                 .on_click(move |_, _, cx| cx.open_url(&link)),
-                        ),
-                )
-            },
-        )
-        .when(
-            ui.destination == ExportDestination::Link
-                && self.sharing.is_none()
-                && store::auth_snapshot().organizations.len() > 1,
-            |this| {
-                let orgs = store::auth_snapshot().organizations;
-                let selected = ui
-                    .organization_id
-                    .clone()
-                    .or_else(|| orgs.first().map(|org| org.id.clone()));
-                let label = orgs
-                    .iter()
-                    .find(|org| Some(org.id.as_str()) == selected.as_deref())
-                    .or(orgs.first())
-                    .map(|org| org.name.clone())
-                    .unwrap_or_else(|| tr::editor::export::organization().into());
-                this.child(
-                    div()
-                        .id("export-organization")
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .justify_between()
-                        .h(px(30.))
-                        .px(px(10.))
-                        .rounded(px(7.))
-                        .bg(Hsla::from(editor.ctl))
-                        .cursor_pointer()
-                        .hover(move |style| style.bg(Hsla::from(editor.ctl_hover)))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            let orgs = store::auth_snapshot().organizations;
-                            if orgs.is_empty() {
-                                return;
-                            }
-                            if let Some(ui) = this.export.as_mut() {
-                                let current = ui
-                                    .organization_id
-                                    .as_deref()
-                                    .or(orgs.first().map(|org| org.id.as_str()));
-                                let index = orgs
-                                    .iter()
-                                    .position(|org| Some(org.id.as_str()) == current)
-                                    .unwrap_or(0);
-                                let next = orgs[(index + 1) % orgs.len()].id.clone();
-                                ui.organization_id = Some(next);
-                                ui.persist();
-                            }
-                            cx.notify();
-                        }))
-                        .child(
-                            div()
-                                .text_size(px(12.))
-                                .text_color(Hsla::from(editor.text_2))
-                                .child(tr::editor::export::organization()),
-                        )
-                        .child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .items_center()
-                                .gap(px(4.))
-                                .text_size(px(12.))
-                                .text_color(Hsla::from(editor.text_1))
-                                .child(label)
-                                .child(
-                                    svg()
-                                        .path("icons/caret-down.svg")
-                                        .size(px(14.))
-                                        .text_color(Hsla::from(editor.text_3)),
-                                ),
                         ),
                 )
             },

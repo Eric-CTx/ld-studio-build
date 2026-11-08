@@ -10668,9 +10668,6 @@ impl EditorWindow {
                     .child(self.render_clips_pill(compact, cx))
                     .child(self.render_transcript_pill(compact, cx))
                     .child(div().w(px(6.)).flex_none())
-                    .when(self.sharing.is_some(), |group| {
-                        group.child(self.render_reupload_button(cx))
-                    })
                     .child(self.render_export_button(cx))
                     .relative()
                     .children((!self.visual_ready()).then(|| {

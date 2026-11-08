@@ -26,7 +26,7 @@ use crate::{
     recording,
     session::{Phase, RecordingSession},
     settings_window::Page,
-    sign_in::{SignIn, SignInEvent, SignInOrigin, SignInOutcome},
+    sign_in::SignIn,
     target_thumbnails,
     theme::Theme,
     ui,
@@ -931,14 +931,6 @@ impl RecordingStartPermit {
     }
 }
 
-/// Instant Mode's sign-in gate, shown here when the overlay's "Sign In To
-/// Use" is pressed: the overlays close so the browser is reachable, and they
-/// re-open for `kind` once the account is signed in.
-struct SignInPrompt {
-    kind: TargetType,
-    error: Option<String>,
-}
-
 struct MicrophoneWarning {
     config: recording::StartConfig,
     permit: RecordingStartPermit,
@@ -951,7 +943,7 @@ pub struct MainWindow {
     mode: Mode,
     mode_hover: ModeHoverState,
     mode_hover_task: Option<Task<()>>,
-    mode_hover_bounds: [Rc<Cell<Option<gpui::Bounds<gpui::Pixels>>>>; 3],
+    mode_hover_bounds: [Rc<Cell<Option<gpui::Bounds<gpui::Pixels>>>>; 2],
     target: Option<TargetType>,
     devices: DeviceSnapshot,
     camera: Option<CameraOption>,
@@ -974,7 +966,7 @@ pub struct MainWindow {
     panel: Option<Panel>,
     mode_info_opened_at: std::time::Instant,
     mode_info_preview: Option<Mode>,
-    mode_info_focus: [gpui::FocusHandle; 3],
+    mode_info_focus: [gpui::FocusHandle; 2],
     mode_info_focused: Option<Mode>,
     /// Live filter text for the device and target panels -- a mirror of
     /// `search_input`'s value, kept as a plain `String` because every list in
@@ -993,7 +985,6 @@ pub struct MainWindow {
     checking_storage: bool,
     deep_link_start: Option<RecordingStartPermit>,
     microphone_warning: Option<MicrophoneWarning>,
-    sign_in_prompt: Option<SignInPrompt>,
     copied_error: Option<String>,
     /// Header recordings / screenshots panel. Scanned only while that panel
     /// is open so a large library is not walked on every home paint.
@@ -1004,7 +995,6 @@ pub struct MainWindow {
     recovery_pending: bool,
     recovery_scan_task: Option<Task<()>>,
     recovery_action_task: Option<Task<()>>,
-    plan: PlanBadge,
     /// Display/window thumbnails and app icons for the target cards. See
     /// `target_thumbnails::ThumbnailCache` for why this is per-view rather
     /// than an app global.
@@ -1024,27 +1014,6 @@ pub struct MainWindow {
     prewarm_task: Option<gpui::Task<()>>,
     keyboard_nav: bool,
     _keyboard_nav: gpui::Subscription,
-}
-
-/// `createLicenseQuery` (`utils/queries.ts:257-273`): pro from the auth
-/// plan first, then a commercial license, then personal.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum PlanBadge {
-    Personal,
-    Pro,
-    Commercial,
-}
-
-impl PlanBadge {
-    fn current() -> Self {
-        if crate::store::auth_snapshot().is_upgraded() {
-            Self::Pro
-        } else if crate::store::commercial_license().is_some() {
-            Self::Commercial
-        } else {
-            Self::Personal
-        }
-    }
 }
 
 impl MainWindow {
@@ -1213,33 +1182,6 @@ impl MainWindow {
 
         let sign_in = SignIn::global(cx);
         cx.observe(&sign_in, |_, _, cx| cx.notify()).detach();
-        cx.subscribe(&sign_in, |this, _, event, cx| {
-            let SignInEvent::Finished { origin, outcome } = event else {
-                return;
-            };
-            let Some(prompt) = this.sign_in_prompt.as_mut() else {
-                return;
-            };
-            match outcome {
-                SignInOutcome::SignedIn => {
-                    let kind = prompt.kind;
-                    this.sign_in_prompt = None;
-                    let session = this.session.read(cx);
-                    if session.phase == Phase::Idle && session.editor_recording_target().is_none() {
-                        this.arm_overlay(kind, cx);
-                    }
-                }
-                SignInOutcome::Failed(error) if matches!(origin, SignInOrigin::Overlay(_)) => {
-                    prompt.error = Some(error.clone());
-                }
-                SignInOutcome::TimedOut if matches!(origin, SignInOrigin::Overlay(_)) => {
-                    prompt.error = Some(tr::main::sign_in::timed_out().into());
-                }
-                _ => {}
-            }
-            cx.notify();
-        })
-        .detach();
 
         let keyboard_nav = ui::keyboard_nav::install(window, cx, Self::keyboard_nav_blocked);
 
@@ -1284,7 +1226,6 @@ impl MainWindow {
             checking_storage: false,
             deep_link_start: None,
             microphone_warning: None,
-            sign_in_prompt: None,
             copied_error: None,
             library: None,
             library_task: None,
@@ -1293,7 +1234,6 @@ impl MainWindow {
             recovery_pending: false,
             recovery_scan_task: None,
             recovery_action_task: None,
-            plan: PlanBadge::current(),
             thumbnails: target_thumbnails::ThumbnailCache::default(),
             display_thumbnail_task: None,
             window_thumbnail_task: None,
@@ -1310,7 +1250,6 @@ impl MainWindow {
     fn keyboard_nav_blocked(&self, cx: &gpui::App) -> bool {
         self.session.read(cx).phase != Phase::Idle
             || self.microphone_warning.is_some()
-            || self.sign_in_prompt.is_some()
             || self.idle_error(cx).is_some()
             || app_windows::clean_capture_pending(cx)
     }
@@ -2402,17 +2341,6 @@ impl MainWindow {
                 None => return,
             }
         };
-        if mode == recording::RecordingMode::Instant && !crate::store::auth_snapshot().signed_in() {
-            let kind = match &target {
-                ScreenCaptureTarget::Display { .. } => TargetType::Display,
-                ScreenCaptureTarget::Window { .. } => TargetType::Window,
-                ScreenCaptureTarget::Area { .. } => TargetType::Area,
-                ScreenCaptureTarget::CameraOnly => TargetType::CameraOnly,
-            };
-            self.show_sign_in_prompt(kind, cx);
-            cx.defer(app_windows::show_main_window);
-            return;
-        }
         if matches!(target, ScreenCaptureTarget::CameraOnly) && self.camera.is_none() {
             self.session.update(cx, |session, cx| {
                 session.error = Some(tr::main::error::camera_only_needs_camera().into());
@@ -2951,7 +2879,7 @@ impl Render for MainWindow {
             ui::keyboard_nav::leave(window, cx);
         }
         self.keyboard_nav = ui::keyboard_nav::active(window, cx);
-        let mode_info_focused = [Mode::Instant, Mode::Studio, Mode::Screenshot]
+        let mode_info_focused = [Mode::Studio, Mode::Screenshot]
             .into_iter()
             .zip(&self.mode_info_focus)
             .find(|(_, focus)| self.keyboard_nav && focus.is_focused(window))
@@ -3033,9 +2961,6 @@ impl Render for MainWindow {
             })
             .when(self.microphone_warning.is_some(), |this| {
                 this.child(self.render_microphone_warning(cx))
-            })
-            .when(self.sign_in_prompt.is_some(), |this| {
-                this.child(self.render_sign_in_prompt(cx))
             })
             // A failed start has nowhere else to surface: the overlays are
             // gone by then and the bar closed itself.
@@ -3185,28 +3110,6 @@ impl MainWindow {
             )
     }
 
-    pub fn show_sign_in_prompt(&mut self, kind: TargetType, cx: &mut Context<Self>) {
-        self.clear_mode_hover();
-        self.sign_in_prompt = Some(SignInPrompt { kind, error: None });
-        cx.notify();
-    }
-
-    fn dismiss_sign_in_prompt(&mut self, cx: &mut Context<Self>) {
-        if self.sign_in_prompt.take().is_none() {
-            return;
-        }
-        // Only the attempt this prompt started; one from Settings or an
-        // editor keeps running.
-        let sign_in = SignIn::global(cx);
-        if matches!(
-            sign_in.read(cx).pending_origin(),
-            Some(SignInOrigin::Overlay(_))
-        ) {
-            sign_in.update(cx, |sign_in, cx| sign_in.cancel(cx));
-        }
-        cx.notify();
-    }
-
     /// The dialog frame the sign-in prompt and the error card share: a dimmed
     /// backdrop over the home view (clicking it dismisses), and a raised card
     /// with an icon badge, a title and a close button.
@@ -3314,152 +3217,6 @@ impl MainWindow {
                             })),
                     ),
             )
-    }
-
-    fn render_sign_in_prompt(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = self.theme;
-        let pending = SignIn::global(cx).read(cx).is_pending();
-        let error = self
-            .sign_in_prompt
-            .as_ref()
-            .and_then(|prompt| prompt.error.clone())
-            .filter(|_| !pending);
-
-        let message = if pending {
-            tr::main::sign_in::pending_message()
-        } else {
-            tr::main::sign_in::message()
-        };
-        let primary = if pending {
-            ui::Button::plain(
-                &theme,
-                "sign-in-prompt-reopen",
-                ui::ButtonVariant::Blue,
-                ui::ButtonSize::Lg,
-            )
-            .label(tr::main::sign_in::open_browser_again())
-            .full_width()
-            .on_click(cx.listener(|_, _, _, cx| {
-                SignIn::global(cx).update(cx, |sign_in, cx| sign_in.reopen(cx));
-            }))
-        } else {
-            ui::Button::plain(
-                &theme,
-                "sign-in-prompt-sign-in",
-                ui::ButtonVariant::Blue,
-                ui::ButtonSize::Lg,
-            )
-            .icon("icons/user-round.svg")
-            .label(tr::main::sign_in::sign_in())
-            .full_width()
-            .on_click(cx.listener(|this, _, _, cx| {
-                let Some(prompt) = this.sign_in_prompt.as_mut() else {
-                    return;
-                };
-                prompt.error = None;
-                let origin = SignInOrigin::Overlay(prompt.kind);
-                SignIn::global(cx).update(cx, |sign_in, cx| sign_in.start(origin, cx));
-                cx.notify();
-            }))
-        };
-        let secondary = if pending {
-            div().child(
-                ui::Button::plain(
-                    &theme,
-                    "sign-in-prompt-cancel",
-                    ui::ButtonVariant::Gray,
-                    ui::ButtonSize::Lg,
-                )
-                .label(tr::common::cancel())
-                .full_width()
-                .on_click(cx.listener(|_, _, _, cx| {
-                    SignIn::global(cx).update(cx, |sign_in, cx| sign_in.cancel(cx));
-                })),
-            )
-        } else {
-            div()
-                .flex()
-                .gap(px(8.))
-                .child(
-                    div().flex_1().child(
-                        ui::Button::plain(
-                            &theme,
-                            "sign-in-prompt-studio",
-                            ui::ButtonVariant::Gray,
-                            ui::ButtonSize::Lg,
-                        )
-                        .label(tr::main::sign_in::use_studio())
-                        .full_width()
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            let Some(prompt) = this.sign_in_prompt.take() else {
-                                return;
-                            };
-                            this.set_mode(Mode::Studio, cx);
-                            this.arm_overlay(prompt.kind, cx);
-                        })),
-                    ),
-                )
-                .child(
-                    div().flex_1().child(
-                        ui::Button::plain(
-                            &theme,
-                            "sign-in-prompt-dismiss",
-                            ui::ButtonVariant::Gray,
-                            ui::ButtonSize::Lg,
-                        )
-                        .label(tr::main::sign_in::not_now())
-                        .full_width()
-                        .on_click(cx.listener(|this, _, _, cx| this.dismiss_sign_in_prompt(cx))),
-                    ),
-                )
-        };
-
-        let body = div()
-            .flex()
-            .flex_col()
-            .gap(px(14.))
-            .child(
-                div()
-                    .text_size(px(12.5))
-                    .line_height(px(19.))
-                    .text_color(theme.gray_11)
-                    .child(message),
-            )
-            .when_some(error, |this, error| {
-                this.child(
-                    div()
-                        .rounded(px(8.))
-                        .bg(theme.red_3)
-                        .px(px(10.))
-                        .py(px(7.))
-                        .text_size(px(12.))
-                        .line_height(px(16.))
-                        .text_color(theme.red_11)
-                        .child(error),
-                )
-            })
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(8.))
-                    .child(primary)
-                    .child(secondary),
-            )
-            .into_any_element();
-
-        self.render_modal(
-            "sign-in-prompt",
-            ("icons/instant.svg", theme.blue_3, theme.blue_9),
-            if pending {
-                tr::main::sign_in::waiting()
-            } else {
-                tr::main::sign_in::title()
-            },
-            Self::dismiss_sign_in_prompt,
-            body,
-            cx,
-        )
     }
 
     fn render_clean_capture_preflight(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -3889,15 +3646,6 @@ impl MainWindow {
                                 cx.defer(app_windows::open_teleprompter);
                             }),
                         ),
-                    )
-                    .child(
-                        icon_button("changelog", "icons/bell.svg", 16.).on_click(cx.listener(
-                            |_, _, _window, cx| {
-                                cx.defer(|cx: &mut gpui::App| {
-                                    app_windows::open_settings(Page::Changelog, cx)
-                                });
-                            },
-                        )),
                     ),
             );
 
@@ -4324,7 +4072,6 @@ impl MainWindow {
     }
 
     pub(crate) fn show_recorder(&mut self, cx: &mut Context<Self>) {
-        self.plan = PlanBadge::current();
         cx.notify();
         if self.panel.is_some() {
             self.close_panel(cx);
@@ -4334,8 +4081,6 @@ impl MainWindow {
     fn dismiss_main(&mut self, cx: &mut Context<Self>) -> bool {
         if self.microphone_warning.is_some() {
             self.dismiss_microphone_warning(cx);
-        } else if self.sign_in_prompt.is_some() {
-            self.dismiss_sign_in_prompt(cx);
         } else if self.idle_error(cx).is_some() {
             self.dismiss_idle_error(cx);
         } else if self.mode_hover.visible.is_some() {
@@ -6156,7 +5901,7 @@ impl MainWindow {
         let detail = crate::onboarding_window::mode_detail(shown);
 
         let cards = div().flex().flex_row().gap(px(6.)).w_full().children(
-            [Mode::Instant, Mode::Studio, Mode::Screenshot]
+            [Mode::Studio, Mode::Screenshot]
                 .into_iter()
                 .enumerate()
                 .map(|(index, mode)| {
@@ -6499,10 +6244,7 @@ impl MainWindow {
                     .flex_row()
                     .items_center()
                     .gap(px(4.))
-                    .when(!recording_clip, |this| {
-                        this.child(self.render_logo())
-                            .child(self.render_plan_badge())
-                    })
+                    .when(!recording_clip, |this| this.child(self.render_logo()))
                     .when(recording_clip, |this| {
                         this.child(
                             div()
@@ -6534,46 +6276,6 @@ impl MainWindow {
                             .child(self.effective_mode(cx).header_title()),
                     ),
             )
-    }
-
-    /// The plan badge: Personal is `text-[0.6rem] ml-2 rounded-lg border
-    /// border-gray-5 px-1 py-0.5 bg-gray-3 hover:bg-gray-5`, a button; Pro and
-    /// Commercial are a non-interactive span on `--blue-400`. Which one
-    /// applies is [`PlanBadge::current`], the license query's resolution.
-    fn render_plan_badge(&self) -> impl IntoElement {
-        let theme = self.theme;
-
-        let badge = div()
-            .id("plan-badge")
-            .flex()
-            .items_center()
-            .flex_shrink_0()
-            .ml(px(8.))
-            .px(px(4.))
-            .py(px(2.))
-            .rounded(px(8.))
-            .text_size(px(9.6));
-
-        match self.plan {
-            PlanBadge::Personal => badge
-                .border_1()
-                .border_color(theme.body_border(5))
-                .bg(theme.body_fill(3))
-                .text_color(theme.gray_12)
-                .child(tr::main::plan::personal())
-                .hover(|style| style.bg(theme.body_hover_fill(5)))
-                .on_click(|_, _, cx| {
-                    cx.open_url(crate::auth::PRICING_URL);
-                }),
-            PlanBadge::Pro | PlanBadge::Commercial => badge
-                .bg(theme.blue_9)
-                .text_color(gpui::white())
-                .child(if self.plan == PlanBadge::Commercial {
-                    tr::main::plan::commercial()
-                } else {
-                    "Pro"
-                }),
-        }
     }
 
     /// This goes through `img()`, not `svg()`. The two take different paths in
@@ -6637,9 +6339,9 @@ impl MainWindow {
             return None;
         }
         let index = match mode {
-            Mode::Instant => 0,
-            Mode::Studio => 1,
-            Mode::Screenshot => 2,
+            Mode::Studio => 0,
+            Mode::Screenshot => 1,
+            Mode::Instant => return None,
         };
         let bounds = self.mode_hover_bounds[index].get()?;
         Some(
@@ -6740,9 +6442,8 @@ impl MainWindow {
             .p(px(3.))
             .rounded_full()
             .bg(glass_tint(theme, 0.06, 0.09))
-            .child(button(Mode::Instant, "mode-instant", 0))
-            .child(button(Mode::Studio, "mode-studio", 1))
-            .child(button(Mode::Screenshot, "mode-screenshot", 2))
+            .child(button(Mode::Studio, "mode-studio", 0))
+            .child(button(Mode::Screenshot, "mode-screenshot", 1))
             // `absolute -left-1.5 -top-2 p-1 rounded-full bg-gray-5`, hanging
             // off the pill's top-left corner.
             .child(

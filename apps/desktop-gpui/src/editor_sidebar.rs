@@ -258,13 +258,12 @@ pub enum SidebarTab {
 }
 
 impl SidebarTab {
-    pub const ALL: [SidebarTab; 6] = [
+    pub const ALL: [SidebarTab; 5] = [
         Self::Background,
         Self::Camera,
         Self::Audio,
         Self::Cursor,
         Self::Keyboard,
-        Self::Captions,
     ];
 
     pub fn icon(self) -> &'static str {

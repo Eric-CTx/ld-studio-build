@@ -59,10 +59,6 @@ impl PendingUpdateRequests {
         self.manual = true;
         true
     }
-
-    fn request_channel(&mut self, channel: UpdateChannel) {
-        self.channel = Some(channel);
-    }
 }
 
 struct StagedUpdate {
@@ -75,7 +71,6 @@ struct UpdateScheduler {
     pending: PendingUpdateRequests,
     manual_in_flight: bool,
     status: UpdateStatus,
-    download_policy: UpdateDownloadPolicy,
     staged: Option<StagedUpdate>,
     download: Option<gpui::Task<()>>,
     download_epoch: u64,
@@ -183,38 +178,6 @@ fn set_status(status: UpdateStatus, cx: &mut App) {
 }
 
 pub(crate) fn check_manually(_cx: &mut App) {}
-
-pub(crate) fn update_channel_changed(channel: UpdateChannel, cx: &mut App) {
-    if !cx.has_global::<UpdateScheduler>() {
-        return;
-    }
-
-    drop_pending_update_from_previous_channel(cx);
-    let scheduler = cx.global_mut::<UpdateScheduler>();
-    scheduler.pending.request_channel(channel);
-    let _ = scheduler.wake.try_send(());
-}
-
-fn channel_switch_drops_pending_package(status: &UpdateStatus) -> bool {
-    matches!(
-        status,
-        UpdateStatus::Checking
-            | UpdateStatus::Available { .. }
-            | UpdateStatus::Downloading { .. }
-            | UpdateStatus::Ready { .. }
-    )
-}
-
-fn drop_pending_update_from_previous_channel(cx: &mut App) {
-    if !channel_switch_drops_pending_package(&status(cx)) {
-        return;
-    }
-    let scheduler = cx.global_mut::<UpdateScheduler>();
-    scheduler.download_epoch = scheduler.download_epoch.wrapping_add(1);
-    scheduler.download = None;
-    scheduler.staged = None;
-    set_status(UpdateStatus::Idle, cx);
-}
 
 fn first_check_delay(channel: UpdateChannel) -> Duration {
     match channel {
@@ -333,19 +296,10 @@ pub(crate) fn schedule_startup_check(cx: &mut App) {
         pending: PendingUpdateRequests::default(),
         manual_in_flight: false,
         status: UpdateStatus::Idle,
-        download_policy: GeneralSettings::load().update_download_policy,
         staged: None,
         download: None,
         download_epoch: 0,
     });
-}
-
-pub(crate) fn update_download_policy_changed(policy: UpdateDownloadPolicy, cx: &mut App) {
-    if !cx.has_global::<UpdateScheduler>() {
-        return;
-    }
-    cx.global_mut::<UpdateScheduler>().download_policy = policy;
-    let _ = cx.global::<UpdateScheduler>().wake.try_send(());
 }
 
 fn start_download(release: Release, cx: &mut App) {
@@ -782,47 +736,6 @@ mod tests {
         requests.manual = false;
         assert!(!requests.request_manual(true));
         assert!(requests.request_manual(false));
-    }
-
-    #[test]
-    fn channel_switch_drops_a_download_or_staged_package_and_keeps_an_install() {
-        let nightly = version("0.6.1-nightly.4");
-        assert!(channel_switch_drops_pending_package(
-            &UpdateStatus::Downloading {
-                version: nightly.clone(),
-                fraction: Some(0.4),
-            }
-        ));
-        assert!(channel_switch_drops_pending_package(&UpdateStatus::Ready {
-            version: nightly.clone(),
-        }));
-        assert!(!channel_switch_drops_pending_package(
-            &UpdateStatus::Installing { version: nightly }
-        ));
-        assert!(!channel_switch_drops_pending_package(
-            &UpdateStatus::Installed {
-                version: version("0.6.1"),
-                executable: PathBuf::from("/Applications/Cap.app"),
-            }
-        ));
-        assert!(!channel_switch_drops_pending_package(&UpdateStatus::Idle));
-    }
-
-    #[test]
-    fn channel_changes_coalesce_without_losing_manual_checks() {
-        let mut requests = PendingUpdateRequests::default();
-
-        assert!(requests.request_manual(false));
-        requests.request_channel(UpdateChannel::Nightly);
-        requests.request_channel(UpdateChannel::Stable);
-
-        assert_eq!(
-            requests,
-            PendingUpdateRequests {
-                manual: true,
-                channel: Some(UpdateChannel::Stable),
-            }
-        );
     }
 
     #[test]

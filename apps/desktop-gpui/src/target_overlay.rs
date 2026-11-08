@@ -45,7 +45,6 @@ use crate::{
         GuideAxis, NormRect, SNAP_PX, SnapGuide, build_snap_targets, snap_moving_rect,
     },
     main_window::{Mode, TargetType},
-    sign_in::SignIn,
     theme::Theme,
     ui::Hint,
 };
@@ -1230,9 +1229,6 @@ pub struct OverlayWindow {
     inline_camera_subscription: Option<gpui::Subscription>,
     empty_camera_state: crate::store::CameraWindowState,
     device_menu: Option<OverlayDeviceMenu>,
-    /// Cached off the store so the start pill does not re-read the settings
-    /// file every frame; refreshed whenever the shared sign-in reports.
-    signed_in: bool,
     /// The mic fill the last render drew, `None` when it drew no meter.
     drawn_microphone_fill: Cell<Option<f32>>,
     /// When the area hint first drew since it was last hidden.
@@ -1257,9 +1253,8 @@ struct OverlayDeviceMenu {
 /// `menuModes` (`target-select-overlay.tsx:2064-2090`): three check items, in
 /// this order, checked on the current mode. Picking one switches the mode and
 /// never starts a recording.
-const MODE_MENU: [(fn() -> &'static str, Mode); 3] = [
+const MODE_MENU: [(fn() -> &'static str, Mode); 2] = [
     (tr::main::mode::header::studio, Mode::Studio),
-    (tr::main::mode::header::instant, Mode::Instant),
     (tr::main::mode::header::screenshot, Mode::Screenshot),
 ];
 
@@ -1317,16 +1312,6 @@ impl OverlayWindow {
         media.update(cx, |access, cx| access.refresh(cx));
         cx.observe_in(&media, window, |_, _, window, cx| repaint(window, cx))
             .detach();
-        cx.observe_in(
-            &SignIn::global(cx),
-            window,
-            |this: &mut Self, _, window, cx| {
-                this.signed_in = crate::store::auth_snapshot().signed_in();
-                repaint(window, cx);
-            },
-        )
-        .detach();
-
         let capture_scale = capture_scale_factor(window);
         let logical = display
             .logical_size()
@@ -1404,7 +1389,6 @@ impl OverlayWindow {
             inline_camera_subscription: None,
             empty_camera_state: crate::store::load().camera_window.unwrap_or_default(),
             device_menu: None,
-            signed_in: crate::store::auth_snapshot().signed_in(),
             drawn_microphone_fill: Cell::new(None),
             selection_hint_started: None,
             selection_hint_redraw: None,
@@ -1486,13 +1470,6 @@ impl OverlayWindow {
         let Some(target) = self.target(cx) else {
             return;
         };
-        if self.needs_sign_in(self.select.read(cx).recording_mode, cx) {
-            self.signed_in = crate::store::auth_snapshot().signed_in();
-            if !self.signed_in {
-                self.start_sign_in(cx);
-                return;
-            }
-        }
         if let ScreenCaptureTarget::Window { id } = &target {
             let window = scap_targets::Window::from_id(id);
             let expected_title = crate::main_window::auto_window_title();
@@ -1529,28 +1506,6 @@ impl OverlayWindow {
 
     fn dismiss(&mut self, cx: &mut Context<Self>) {
         cx.defer(app_windows::dismiss_target_overlays);
-    }
-
-    /// Instant mode uploads as it records, so it cannot start signed out
-    /// (`target-select-overlay.tsx`'s "Sign In To Use"). The editor's record
-    /// flow always records Studio whatever the pill says.
-    fn needs_sign_in(&self, mode: Mode, cx: &App) -> bool {
-        mode == Mode::Instant
-            && !self.signed_in
-            && crate::session::RecordingSession::global(cx)
-                .read(cx)
-                .editor_recording_target()
-                .is_none()
-    }
-
-    /// The overlays sit above every app, browser included, so they step aside
-    /// for the main window's sign-in prompt, and re-open for the same target
-    /// kind once signed in.
-    fn start_sign_in(&mut self, cx: &mut Context<Self>) {
-        let Some(kind) = self.select.read(cx).mode else {
-            return;
-        };
-        cx.defer(move |cx: &mut App| app_windows::show_instant_sign_in(kind, cx));
     }
 
     fn sync_appearance(&mut self, window: &Window, cx: &gpui::App) {
@@ -4242,20 +4197,16 @@ impl OverlayWindow {
         } else {
             (theme.blue_10, theme.blue_11)
         };
-        let needs_sign_in = self.needs_sign_in(mode, cx);
         let label = match mode {
             Mode::Screenshot => tr::overlay::start::take_screenshot(),
-            _ if needs_sign_in => tr::overlay::start::sign_in(),
             _ => tr::overlay::start::start_recording(),
         };
         let icon = match mode {
-            Mode::Instant if needs_sign_in => "icons/user-round.svg",
             Mode::Instant => "icons/instant.svg",
             Mode::Studio => "icons/film-cut.svg",
             Mode::Screenshot => "icons/camera.svg",
         };
         let mode_label = match mode {
-            Mode::Instant if needs_sign_in => tr::overlay::start::instant_sign_in(),
             Mode::Instant => tr::overlay::start::instant(),
             Mode::Studio => tr::overlay::start::studio(),
             Mode::Screenshot => tr::main::mode::header::screenshot(),
@@ -4948,19 +4899,18 @@ mod tests {
     fn mode_menu_matches_menu_modes() {
         // `menuModes` order (`target-select-overlay.tsx:2064-2090`) with the
         // check on the current mode.
-        let items = mode_menu_items(Mode::Instant);
+        let items = mode_menu_items(Mode::Studio);
         assert_eq!(
             items
                 .iter()
                 .map(|item| (item.label.to_string(), item.checked))
                 .collect::<Vec<_>>(),
             vec![
-                ("Studio Mode".to_string(), false),
-                ("Instant Mode".to_string(), true),
+                ("Studio Mode".to_string(), true),
                 ("Screenshot Mode".to_string(), false),
             ],
         );
-        assert_eq!(MODE_MENU[2].1, Mode::Screenshot);
+        assert_eq!(MODE_MENU[1].1, Mode::Screenshot);
     }
 
     #[test]

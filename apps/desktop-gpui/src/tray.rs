@@ -16,8 +16,6 @@
 //! Labels mirror `build_tray_menu`, except on macOS where the mode group
 //! names the current mode and its section header follows the palette's
 //! highlight in italic; the grouping is [`build_menu`]'s own.
-//! "Upload Logs" renders disabled because the log-upload path does not exist
-//! here.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -483,8 +481,8 @@ fn mode_submenu(mode: Mode) -> Entry {
             },
             match target {
                 Mode::Studio => TrayItem::ModeStudio,
-                Mode::Instant => TrayItem::ModeInstant,
                 Mode::Screenshot => TrayItem::ModeScreenshot,
+                Mode::Instant => TrayItem::ModeInstant,
             },
         )
     };
@@ -494,7 +492,6 @@ fn mode_submenu(mode: Mode) -> Entry {
         icon: None,
         items: vec![
             label(Mode::Studio, tr::tray::mode::studio()),
-            label(Mode::Instant, tr::tray::mode::instant()),
             label(Mode::Screenshot, tr::tray::mode::screenshot()),
         ],
     }
@@ -612,9 +609,6 @@ pub fn build_menu(mode: Mode, previous: &[PreviousItem], version: &str) -> Vec<E
         TrayItem::OpenSettings,
         "settings",
     ));
-    // `logging::upload_log_file` needs the auth token and the HTTP client,
-    // neither of which this app has.
-    entries.push(Entry::disabled(tr::tray::upload_logs()));
     entries.push(Entry::Separator);
 
     if cfg!(target_os = "macos") {
@@ -836,7 +830,7 @@ pub fn describe_menu(entries: &[Entry]) -> String {
                 Entry::Separator => out.push_str(&format!("{pad}---\n")),
                 Entry::ModePicker { mode } => {
                     out.push_str(&format!("{pad}{}\n", mode_name(*mode)));
-                    for name in ["Studio", "Instant", "Screenshot"] {
+                    for name in ["Studio", "Screenshot"] {
                         out.push_str(&format!("{}{name}\n", "  ".repeat(depth + 1)));
                     }
                 }
@@ -2197,7 +2191,6 @@ mod tests {
             "-",
             "Import Media...",
             "Settings",
-            "Upload Logs",
             "-",
         ]);
         // The version row is a section header below Quit on macOS and a
@@ -2238,18 +2231,8 @@ mod tests {
     #[test]
     fn the_current_mode_is_ticked() {
         for (mode, expected) in [
-            (
-                Mode::Studio,
-                ["\u{2713} Studio", "   Instant", "   Screenshot"],
-            ),
-            (
-                Mode::Instant,
-                ["   Studio", "\u{2713} Instant", "   Screenshot"],
-            ),
-            (
-                Mode::Screenshot,
-                ["   Studio", "   Instant", "\u{2713} Screenshot"],
-            ),
+            (Mode::Studio, ["\u{2713} Studio", "   Screenshot"]),
+            (Mode::Screenshot, ["   Studio", "\u{2713} Screenshot"]),
         ] {
             let Entry::Submenu { items, .. } = mode_submenu(mode) else {
                 panic!("the mode picker is a submenu");
@@ -2310,7 +2293,7 @@ mod tests {
     /// present and greyed, in place, so the menu keeps its shape.
     #[test]
     fn unimplemented_rows_are_present_but_disabled() {
-        let menu = build_menu(Mode::Instant, &[], "0.1.0");
+        let menu = build_menu(Mode::Studio, &[], "0.1.0");
         let disabled: Vec<_> = menu
             .iter()
             .filter_map(|entry| match entry {
@@ -2325,12 +2308,13 @@ mod tests {
         assert_eq!(
             disabled,
             if cfg!(target_os = "macos") {
-                vec!["Upload Logs"]
+                Vec::<String>::new()
             } else {
-                vec!["Upload Logs", "Cap v0.1.0"]
+                vec!["Cap v0.1.0".to_string()]
             }
         );
     }
+
     #[test]
     fn capture_rows_have_one_entry_per_action() {
         let rows: Vec<_> = build_menu(Mode::Studio, &[], "0.1.0")
@@ -2413,7 +2397,6 @@ mod tests {
             })
         };
         assert!(has(Mode::Studio));
-        assert!(has(Mode::Instant));
         assert!(!has(Mode::Screenshot));
     }
 

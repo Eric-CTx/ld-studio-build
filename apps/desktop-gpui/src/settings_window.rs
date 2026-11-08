@@ -38,8 +38,7 @@ use crate::{
     store::{
         self, AppTheme, DEFAULT_PROJECT_NAME_TEMPLATE, DEFAULT_SERVER_URL, GENERAL_SETTINGS,
         GeneralSettings, MainWindowStartBehaviour, PostDeletionBehaviour, RECORDING_START_SAFETY,
-        SettingsEnum, StudioQuality, UpdateChannel, UpdateDownloadPolicy, WindowCaptureStyle,
-        WindowExclusion,
+        SettingsEnum, StudioQuality, WindowCaptureStyle, WindowExclusion,
     },
     theme::Theme,
     ui,
@@ -104,20 +103,17 @@ pub enum Page {
 }
 
 impl Page {
+    /// The sidebar entries. Transcription, Integrations, License, Feedback,
+    /// Changelog and Cli are hidden in the local-only build; their variants and
+    /// pages stay so that `from_slug` and the render table still compile.
     pub const ALL: &'static [Page] = &[
         Page::General,
         Page::Quality,
         Page::Shortcuts,
-        Page::Cli,
         Page::Recordings,
         Page::Screenshots,
         Page::Automations,
-        Page::Transcription,
-        Page::Integrations,
-        Page::License,
         Page::Experimental,
-        Page::Feedback,
-        Page::Changelog,
     ];
 
     /// The `name` field. Note "Shortcuts" for the `hotkeys` route -- the label
@@ -280,18 +276,6 @@ const FREE_INSTANT_MODE_MAX_RESOLUTION: u32 = 1280;
 enum InstantQualityNotice {
     SaveFailed,
 }
-
-/// `UPDATE_CHANNEL_OPTIONS`.
-const UPDATE_CHANNEL_DESCRIPTIONS: &[(UpdateChannel, fn() -> &'static str)] = &[
-    (
-        UpdateChannel::Stable,
-        tr::settings::general::updates::stable_description,
-    ),
-    (
-        UpdateChannel::Nightly,
-        tr::settings::general::updates::nightly_description,
-    ),
-];
 
 /// The three theme previews (`~/assets/theme-previews/*.jpg`), keyed the way
 /// `AppearanceSection`'s `previews` map is.
@@ -2067,74 +2051,6 @@ impl SettingsWindow {
 
     fn render_account(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
-        let (update_label, update_ready) = match crate::updates::status(cx) {
-            crate::updates::UpdateStatus::Idle | crate::updates::UpdateStatus::Available { .. } => {
-                (
-                    tr::settings::sidebar::check_for_updates().to_string(),
-                    false,
-                )
-            }
-            crate::updates::UpdateStatus::Checking => (
-                tr::settings::sidebar::checking_for_updates().to_string(),
-                false,
-            ),
-            crate::updates::UpdateStatus::Downloading {
-                version,
-                fraction: Some(fraction),
-            } => (
-                tr::settings::sidebar::downloading_progress(
-                    version,
-                    (fraction * 100.).round() as u32,
-                ),
-                false,
-            ),
-            crate::updates::UpdateStatus::Downloading { version, .. } => {
-                (tr::settings::sidebar::downloading(version), false)
-            }
-            crate::updates::UpdateStatus::Ready { version }
-            | crate::updates::UpdateStatus::Installed { version, .. } => {
-                (tr::settings::sidebar::restart_to_update(version), true)
-            }
-            crate::updates::UpdateStatus::Installing { version } => {
-                (tr::settings::sidebar::installing(version), false)
-            }
-        };
-
-        let update_links = div()
-            .flex()
-            .flex_col()
-            .items_start()
-            .gap(px(6.))
-            .mb(px(8.))
-            .text_size(px(12.))
-            .text_color(theme.settings_muted())
-            .child(
-                div()
-                    .id("settings-version")
-                    .px(px(4.))
-                    .py(px(2.))
-                    .rounded(px(4.))
-                    .child(format!("v{}", env!("CARGO_PKG_VERSION"))),
-            )
-            .child(
-                div()
-                    .id("settings-check-updates")
-                    .max_w_full()
-                    .truncate()
-                    .cursor_pointer()
-                    .when(update_ready, |link| {
-                        link.text_color(rgb(Theme::SETTINGS_ACCENT))
-                    })
-                    .hover(|style| style.text_color(theme.settings_text()))
-                    .on_click(cx.listener(move |_, _, _, cx| {
-                        if update_ready {
-                            crate::updates::install_and_relaunch(cx);
-                        } else {
-                            crate::updates::check_manually(cx);
-                        }
-                    }))
-                    .child(update_label),
-            );
 
         div()
             .flex()
@@ -2147,7 +2063,6 @@ impl SettingsWindow {
             .pb(px(SIDEBAR_PADDING_X))
             .border_t_1()
             .border_color(theme.settings_border())
-            .child(update_links)
             .child({
                 let signed_in = store::auth_snapshot().signed_in();
                 let (variant, label) = if SignIn::global(cx).read(cx).is_pending() {
@@ -3227,9 +3142,7 @@ impl SettingsWindow {
             self.render_storage(cx).into_any_element(),
             self.render_project_name(window, cx).into_any_element(),
             self.render_excluded_windows(cx).into_any_element(),
-            self.render_updates(cx).into_any_element(),
             self.render_self_host(window, cx).into_any_element(),
-            self.render_privacy(cx).into_any_element(),
         ]);
         sections
     }
@@ -4429,149 +4342,6 @@ impl SettingsWindow {
         )
     }
 
-    /// `UpdatesSection` -- `updateChannel`.
-    fn render_updates(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = self.theme;
-        let current = self.settings.update_channel;
-        let current_policy = self.settings.update_download_policy;
-        let description = UPDATE_CHANNEL_DESCRIPTIONS
-            .iter()
-            .find(|(channel, _)| *channel == current)
-            .map(|(_, description)| description())
-            .unwrap_or_default();
-
-        let body = div()
-            .flex()
-            .flex_col()
-            .gap(px(12.))
-            .px(px(16.))
-            .py(px(16.))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .justify_between()
-                    .items_start()
-                    .gap(px(16.))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .min_w_0()
-                            .child(
-                                div()
-                                    .text_size(px(13.))
-                                    .child(tr::settings::general::updates::download_policy::label()),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(12.))
-                                    .line_height(px(16.))
-                                    .text_color(theme.settings_muted())
-                                    .child(
-                                        tr::settings::general::updates::download_policy::description(),
-                                    ),
-                            ),
-                    )
-                    .child(self.segmented_raw(
-                        "update-download-policy",
-                        vec![
-                            ui::SegmentOption::new(
-                                tr::settings::general::updates::download_policy::auto(),
-                                current_policy == UpdateDownloadPolicy::Auto,
-                            ),
-                            ui::SegmentOption::new(
-                                tr::settings::general::updates::download_policy::manual(),
-                                current_policy == UpdateDownloadPolicy::Manual,
-                            ),
-                            ui::SegmentOption::new(
-                                tr::settings::general::updates::download_policy::never(),
-                                current_policy == UpdateDownloadPolicy::Never,
-                            ),
-                        ],
-                        cx,
-                        |this, index, cx| {
-                            let value = match index {
-                                0 => UpdateDownloadPolicy::Auto,
-                                1 => UpdateDownloadPolicy::Manual,
-                                _ => UpdateDownloadPolicy::Never,
-                            };
-                            if this.settings.update_download_policy == value {
-                                return;
-                            }
-                            this.settings.update_download_policy = value;
-                            this.write_enum("updateDownloadPolicy", value, cx);
-                            crate::updates::update_download_policy_changed(value, cx);
-                        },
-                    )),
-            )
-            .child(div().h(px(1.)).bg(theme.settings_border()))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .justify_between()
-                    .items_start()
-                    .gap(px(16.))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .min_w_0()
-                            .child(
-                                div()
-                                    .text_size(px(13.))
-                                    .child(tr::settings::general::updates::channel::label()),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(12.))
-                                    .line_height(px(16.))
-                                    .text_color(theme.settings_muted())
-                                    .child(tr::settings::general::updates::channel::description()),
-                            ),
-                    )
-                    .child(self.segmented::<UpdateChannel>(
-                        "update-channel",
-                        current,
-                        cx,
-                        |this, value, cx| {
-                            if this.settings.update_channel == value {
-                                return;
-                            }
-                            this.settings.update_channel = value;
-                            this.write_enum("updateChannel", value, cx);
-                            crate::updates::update_channel_changed(
-                                this.settings.update_channel,
-                                cx,
-                            );
-                        },
-                    )),
-            )
-            .child(
-                self.note_box()
-                    .child(div().text_size(px(12.)).child(description))
-                    .when(current == UpdateChannel::Nightly, |this| {
-                        this.child(
-                            div()
-                                .text_size(px(11.))
-                                .line_height(px(15.))
-                                .text_color(theme.settings_muted())
-                                .child(tr::settings::general::updates::nightly_switch_back()),
-                        )
-                    }),
-            );
-
-        self.section(
-            tr::settings::general::updates::title(),
-            Some(tr::settings::general::updates::description()),
-            None,
-            vec![self.card(false).child(body).into_any_element()],
-        )
-    }
-
     /// `ServerURLSetting` -- `serverUrl`.
     fn render_self_host(&self, _window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let stored = self.settings.server_url.clone();
@@ -4672,36 +4442,6 @@ impl SettingsWindow {
         .detach();
     }
 
-    /// `TelemetryCard` -- `enableTelemetry`.
-    fn render_privacy(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        self.section(
-            tr::settings::general::privacy::title(),
-            None,
-            None,
-            vec![
-                self.rows(vec![
-                    self.setting_row(
-                        tr::settings::general::privacy::telemetry::label(),
-                        Some(tr::settings::general::privacy::telemetry::description()),
-                        self.toggle(
-                            "telemetry",
-                            tr::settings::general::privacy::telemetry::label(),
-                            self.settings.enable_telemetry,
-                            cx,
-                            |this, cx| {
-                                this.settings.enable_telemetry = !this.settings.enable_telemetry;
-                                let value = this.settings.enable_telemetry;
-                                this.write_bool("enableTelemetry", value, cx);
-                            },
-                        )
-                        .into_any_element(),
-                    ),
-                ])
-                .into_any_element(),
-            ],
-        )
-    }
-
     // -- Primitives (Setting.tsx) -----------------------------------------
 
     /// `<Section>`: `space-y-2.5`, header `flex justify-between items-end
@@ -4778,29 +4518,6 @@ impl SettingsWindow {
                 this.open_menu(kind, event.position(), window, cx);
             },
         ))
-    }
-
-    /// `SegmentedControl` over a [`SettingsEnum`].
-    fn segmented<T: SettingsEnum>(
-        &self,
-        id: &'static str,
-        current: T,
-        cx: &mut Context<Self>,
-        on_change: impl Fn(&mut Self, T, &mut Context<Self>) + Clone + 'static,
-    ) -> ui::SegmentedControl {
-        self.segmented_raw(
-            id,
-            T::ALL
-                .iter()
-                .map(|value| ui::SegmentOption::new(value.label(), *value == current))
-                .collect(),
-            cx,
-            move |this, index, cx| {
-                if let Some(value) = ui::option_at(T::ALL, index) {
-                    on_change(this, value, cx);
-                }
-            },
-        )
     }
 
     /// [`ui::SegmentedControl::settings`].
@@ -5097,12 +4814,44 @@ mod tests {
     /// addresses by slug.
     #[test]
     fn every_page_round_trips_through_its_slug() {
-        assert_eq!(Page::ALL.len(), 13);
-        for page in Page::ALL {
-            assert_eq!(Page::from_slug(page.slug()), Some(*page));
+        // The hidden pages keep their routes, so every variant still round-trips.
+        let every_page = [
+            Page::General,
+            Page::Quality,
+            Page::Shortcuts,
+            Page::Cli,
+            Page::Recordings,
+            Page::Screenshots,
+            Page::Automations,
+            Page::Transcription,
+            Page::Integrations,
+            Page::License,
+            Page::Experimental,
+            Page::Feedback,
+            Page::Changelog,
+        ];
+        for page in every_page {
+            assert_eq!(Page::from_slug(page.slug()), Some(page));
         }
         assert_eq!(Page::Shortcuts.slug(), "hotkeys");
         assert_eq!(Page::from_slug("nope"), None);
+    }
+
+    /// The local-only build lists only these pages in the sidebar.
+    #[test]
+    fn sidebar_lists_only_the_local_pages() {
+        assert_eq!(
+            Page::ALL,
+            &[
+                Page::General,
+                Page::Quality,
+                Page::Shortcuts,
+                Page::Recordings,
+                Page::Screenshots,
+                Page::Automations,
+                Page::Experimental,
+            ]
+        );
     }
 
     #[test]

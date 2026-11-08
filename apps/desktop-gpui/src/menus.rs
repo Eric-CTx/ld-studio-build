@@ -337,25 +337,47 @@ fn settings_shortcut_allowed(idle: bool, onboarding_open: bool, hotkeys_paused: 
 /// (`Submenu::with_id_and_items(.., HELP_SUBMENU_ID, "Help", true, &[])`).
 pub fn build_menus(update_status: &updates::UpdateStatus, settings_enabled: bool) -> Vec<Menu> {
     let update_row = UpdateRow::of(update_status);
+    // The local-only Windows build has no update check and no Help menu items.
+    // macOS keeps the menu layout the native menu bar positions rows by
+    // (`platform.rs` UPDATE_ROW, SETTINGS_ROW, HELP_MENU), so only the Windows
+    // build drops items here.
+    let windows_local = cfg!(target_os = "windows");
+    let update_items = if windows_local {
+        Vec::new()
+    } else {
+        vec![
+            MenuItem::action(update_row.title, CheckForUpdate).disabled(!update_row.enabled),
+            MenuItem::separator(),
+        ]
+    };
+    let help_items = if windows_local {
+        Vec::new()
+    } else {
+        vec![
+            MenuItem::action(tr::menu::help::feedback(), HelpFeedback),
+            MenuItem::separator(),
+            MenuItem::action(tr::menu::help::changelog(), Changelog),
+        ]
+    };
+
+    let mut app_items = vec![MenuItem::action(tr::menu::app::about(), About)];
+    app_items.extend(update_items);
+    app_items.extend([
+        MenuItem::action(tr::menu::app::settings(), OpenSettings).disabled(!settings_enabled),
+        MenuItem::separator(),
+        MenuItem::os_submenu(tr::menu::app::services(), SystemMenuType::Services),
+        MenuItem::separator(),
+        MenuItem::action(tr::menu::app::hide(), HideSelf),
+        MenuItem::action(tr::menu::app::hide_others(), HideOthers),
+        MenuItem::separator(),
+        MenuItem::action(tr::menu::app::quit(), Quit),
+    ]);
 
     vec![
         Menu {
             name: APP_NAME.into(),
             disabled: false,
-            items: vec![
-                MenuItem::action(tr::menu::app::about(), About),
-                MenuItem::action(update_row.title, CheckForUpdate).disabled(!update_row.enabled),
-                MenuItem::separator(),
-                MenuItem::action(tr::menu::app::settings(), OpenSettings)
-                    .disabled(!settings_enabled),
-                MenuItem::separator(),
-                MenuItem::os_submenu(tr::menu::app::services(), SystemMenuType::Services),
-                MenuItem::separator(),
-                MenuItem::action(tr::menu::app::hide(), HideSelf),
-                MenuItem::action(tr::menu::app::hide_others(), HideOthers),
-                MenuItem::separator(),
-                MenuItem::action(tr::menu::app::quit(), Quit),
-            ],
+            items: app_items,
         },
         Menu {
             name: tr::menu::file::title().into(),
@@ -419,11 +441,7 @@ pub fn build_menus(update_status: &updates::UpdateStatus, settings_enabled: bool
         Menu {
             name: tr::menu::help::title().into(),
             disabled: false,
-            items: vec![
-                MenuItem::action(tr::menu::help::feedback(), HelpFeedback),
-                MenuItem::separator(),
-                MenuItem::action(tr::menu::help::changelog(), Changelog),
-            ],
+            items: help_items,
         },
     ]
 }
