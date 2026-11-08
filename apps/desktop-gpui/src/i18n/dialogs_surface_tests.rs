@@ -56,9 +56,6 @@ const FORMATTED: &[&str] = &[
     "transcription.download.file_progress",
     "transcription.download.progress",
     "dialog.quit.canceled",
-    "dialog.update.already_getting",
-    "dialog.update.available",
-    "dialog.update.check_failed",
     "dialog.update.download_failed",
     "dialog.update.failed",
     "dialog.update.install_failed",
@@ -852,13 +849,6 @@ fn dialog_surfaces_match_the_literals_they_replaced() {
             tr::dialog::update::busy(),
             "Finish your recording, export, upload, import, or transcription task before updating Cap.",
         ),
-        (tr::dialog::update::no_update_title(), "No Update Available"),
-        (
-            tr::dialog::update::no_update(),
-            "You're already using the latest version of Cap.",
-        ),
-        (tr::dialog::update::download(), "Download"),
-        (tr::dialog::update::not_now(), "Not Now"),
         (tr::dialog::update::restart_now(), "Restart Now"),
         (tr::dialog::update::later(), "Later"),
         (
@@ -1142,20 +1132,6 @@ fn update_and_quit_messages_format_like_the_code_they_replaced() {
             format!(
                 "Quit canceled: {error}. Cap will stay open so you can finish or recover the recording."
             ),
-        ),
-        (
-            tr::dialog::update::already_getting(&version),
-            format!("Cap is already getting version {version} ready."),
-        ),
-        (
-            tr::dialog::update::available(&version),
-            format!(
-                "Version {version} of Cap is available. Cap will download it in the background and let you know when it's ready to install."
-            ),
-        ),
-        (
-            tr::dialog::update::check_failed(error),
-            format!("Couldn't check for updates: {error}"),
         ),
         (
             tr::dialog::update::download_failed(&version, error),

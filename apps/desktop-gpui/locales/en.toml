@@ -3146,19 +3146,12 @@ still_open = "Cap is still open"
 unconfirmed = "Quit canceled because recording shutdown could not be confirmed. Cap will stay open. Use Stop, then try Quit again."
 
 [dialog.update]
-already_getting = { text = "Cap is already getting version {version} ready.", context = "{version} is a version number such as 0.6.2." }
-available = { text = "Version {version} of Cap is available. Cap will download it in the background and let you know when it's ready to install.", context = "{version} is a version number such as 0.6.2." }
 busy = "Finish your recording, export, upload, import, or transcription task before updating Cap."
 busy_title = "Cap is busy"
-check_failed = { text = "Couldn't check for updates: {error}", context = "{error} is a technical reason, usually in English." }
-download = { text = "Download", context = "Button: download the update now." }
 download_failed = { text = "Couldn't download version {version}: {error}", context = "{error} is a technical reason, usually in English." }
 failed = { text = "{message}\n\nYou can always download the latest version from Cap.so/download.", context = "{message} is one of the other update error sentences." }
 install_failed = { text = "Couldn't install version {version}: {error}", context = "{error} is a technical reason, usually in English." }
 later = "Later"
-no_update = "You're already using the latest version of Cap."
-no_update_title = "No Update Available"
-not_now = "Not Now"
 package_not_installed = "The package wasn't installed. Approve the system prompt, or install it from Cap.so/download."
 ready = { text = "Cap {version} is ready. Restart Cap to finish updating.", context = "{version} is a version number such as 0.6.2." }
 restart_now = "Restart Now"
