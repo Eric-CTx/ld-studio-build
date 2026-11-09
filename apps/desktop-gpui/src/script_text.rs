@@ -1,6 +1,4 @@
-//! Script lettering drawn from pre-shaped glyph outlines (Damion, set with
-//! HarfBuzz offline), so the face needs no font loading: the camera
-//! preview's "loading" and the welcome screen's "Welcome".
+//! 使用预先塑形的 Damion 字形轮廓绘制摄像头预览的加载文字，无需加载字体。
 
 use std::cell::RefCell;
 
@@ -42,14 +40,7 @@ impl Script {
         self.build(origin, scale, 0.)
     }
 
-    /// Every contour stroked `width` wide. Strokes run through the joins
-    /// too, so paint the fill over this: only the word's outer edge stays.
-    pub fn stroke(&self, origin: (f32, f32), scale: f32, width: f32) -> Option<Path<Pixels>> {
-        self.build(origin, scale, width)
-    }
-
-    // Tessellated once per scale and stroke at the origin, then translated:
-    // the welcome title moves every frame of its entrance and exit.
+    // 按缩放与描边缓存原点处的三角化结果，再平移到绘制位置。
     fn build(&self, origin: (f32, f32), scale: f32, stroke: f32) -> Option<Path<Pixels>> {
         thread_local! {
             static CACHE: RefCell<PathCache> = const { RefCell::new(Vec::new()) };
