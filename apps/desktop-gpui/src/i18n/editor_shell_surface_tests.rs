@@ -1686,3 +1686,9 @@ fn selection_headers_read_as_whole_sentences() {
         );
     }
 }
+
+#[test]
+fn local_export_does_not_render_instant_link_hint() {
+    let source = include_str!("../editor_export.rs");
+    assert!(!source.contains("tr::editor::export::done::instant_hint()"));
+}

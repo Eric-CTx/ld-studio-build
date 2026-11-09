@@ -507,7 +507,8 @@ pub fn find_incomplete_recordings() -> Vec<IncompleteRecordingItem> {
 
 fn is_recording_after_recovery_cutoff(pretty_name: &str, sort_time_millis: f64) -> bool {
     let Some(date) = pretty_name
-        .strip_prefix("Cap ")
+        .strip_prefix("灵动录屏 ")
+        .or_else(|| pretty_name.strip_prefix("Cap "))
         .and_then(|name| name.split(" at ").next())
         .and_then(|value| chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").ok())
         .or_else(|| {
@@ -2798,6 +2799,20 @@ mod tests {
             !is_recording_after_recovery_cutoff("Custom instant recording", 0.0),
             "a name without a date falls back to the sort time"
         );
+    }
+
+    #[test]
+    fn recovery_cutoff_recognizes_localized_and_legacy_names() {
+        for prefix in ["灵动录屏", "Cap"] {
+            assert!(!is_recording_after_recovery_cutoff(
+                &format!("{prefix} 2025-12-31 at 23.59.59"),
+                1_767_225_600_000.0,
+            ));
+            assert!(is_recording_after_recovery_cutoff(
+                &format!("{prefix} 2026-01-01 at 00.00.00"),
+                0.0,
+            ));
+        }
     }
 
     #[test]

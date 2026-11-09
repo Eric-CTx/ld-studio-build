@@ -915,10 +915,7 @@ pub const DEFAULT_EXCLUDED_WINDOW_TITLES: &[&str] = &[
     "灵动录屏设置",
     "灵动录屏录制控制",
     "灵动录屏摄像头",
-    "Cap Window Capture Occluder",
-    "Cap Capture Area",
     "灵动录屏模式选择",
-    "Cap Recordings Overlay",
     "灵动录屏提词器",
 ];
 
@@ -1449,6 +1446,18 @@ impl GeneralSettings {
                     entries
                         .iter()
                         .filter_map(WindowExclusion::from_json)
+                        .filter(|rule| {
+                            !(rule.bundle_identifier.is_none()
+                                && rule.owner_name.is_none()
+                                && matches!(
+                                    rule.window_title.as_deref(),
+                                    Some(
+                                        "Cap Window Capture Occluder"
+                                            | "Cap Capture Area"
+                                            | "Cap Recordings Overlay"
+                                    )
+                                ))
+                        })
                         .map(|mut rule| {
                             use crate::app_windows::OwnWindow;
                             if rule.bundle_identifier.is_none() && rule.owner_name.is_none() {
@@ -3527,9 +3536,14 @@ mod tests {
                 { "windowTitle": "Cap" },
                 { "windowTitle": "Cap Settings" },
                 { "windowTitle": "Cap Camera" },
+                { "windowTitle": "Cap Window Capture Occluder" },
+                { "windowTitle": "Cap Capture Area" },
+                { "windowTitle": "Cap Recordings Overlay" },
                 { "windowTitle": "My Notes" },
                 { "ownerName": "Another App", "windowTitle": "Cap" },
-                { "bundleIdentifier": "other.app", "windowTitle": "Cap Settings" }
+                { "bundleIdentifier": "other.app", "windowTitle": "Cap Settings" },
+                { "ownerName": "Other", "windowTitle": "Cap Capture Area" },
+                { "bundleIdentifier": "other.app", "windowTitle": "Cap Recordings Overlay" }
             ]),
         );
         let settings = GeneralSettings::from_sections(&general, &Map::new(), &Map::new());
@@ -3546,7 +3560,9 @@ mod tests {
                 "灵动录屏摄像头",
                 "My Notes",
                 "Cap",
-                "Cap Settings"
+                "Cap Settings",
+                "Cap Capture Area",
+                "Cap Recordings Overlay"
             ]
         );
         assert_eq!(

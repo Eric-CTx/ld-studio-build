@@ -8527,14 +8527,7 @@ mod tests {
             .iter()
             .filter(|title| !ours.contains(title))
             .collect();
-        assert_eq!(
-            defaults_without_a_window,
-            vec![
-                &"Cap Window Capture Occluder",
-                &"Cap Capture Area",
-                &"Cap Recordings Overlay",
-            ]
-        );
+        assert!(defaults_without_a_window.is_empty());
 
         let windows_without_a_default: Vec<OwnWindow> = OwnWindow::ALL
             .into_iter()

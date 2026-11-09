@@ -2645,14 +2645,6 @@ impl EditorWindow {
                         .detach();
                     })),
                 )
-                .child(
-                    div()
-                        .max_w(px(320.))
-                        .text_size(px(12.))
-                        .text_color(Hsla::from(editor.text_2))
-                        .text_center()
-                        .child(tr::editor::export::done::instant_hint()),
-                )
             })
             .when(
                 ui.phase == ExportPhase::Done || ui.phase == ExportPhase::Failed,
