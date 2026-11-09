@@ -461,7 +461,7 @@ fn export_file_name(pretty_name: &str, extension: &str) -> String {
         let _ = name.pop();
     }
     if name.trim().is_empty() {
-        name = "Cap Recording".into();
+        name = "灵动录屏".into();
     }
     format!("{name}.{extension}")
 }
@@ -796,7 +796,7 @@ impl EditorWindow {
             .summary()
             .map(|summary| summary.pretty_name.clone())
             .filter(|name| !name.trim().is_empty())
-            .unwrap_or_else(|| "Cap Recording".into());
+            .unwrap_or_else(|| "灵动录屏".into());
         let Some(ui) = self.export.as_mut() else {
             return;
         };
@@ -3140,11 +3140,11 @@ mod tests {
             for (title, expected) in [
                 ("Sprint 1/2", "Sprint 12"),
                 (r#"a/b\c:d*e?f"g<h>i|j"#, "abcdefghij"),
-                ("\0\n", "Cap Recording"),
-                ("/\\:*?\"<>|", "Cap Recording"),
-                ("...", "Cap Recording"),
-                ("   ", "Cap Recording"),
-                ("CON", "Cap Recording"),
+                ("\0\n", "灵动录屏"),
+                ("/\\:*?\"<>|", "灵动录屏"),
+                ("...", "灵动录屏"),
+                ("   ", "灵动录屏"),
+                ("CON", "灵动录屏"),
                 ("Clip final. ", "Clip final"),
                 ("My Clip 2026", "My Clip 2026"),
                 ("你好 🎬", "你好 🎬"),
