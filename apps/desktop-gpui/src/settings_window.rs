@@ -3153,7 +3153,6 @@ impl SettingsWindow {
             self.render_storage(cx).into_any_element(),
             self.render_project_name(window, cx).into_any_element(),
             self.render_excluded_windows(cx).into_any_element(),
-            self.render_self_host(window, cx).into_any_element(),
         ]);
         sections
     }
@@ -4341,6 +4340,7 @@ impl SettingsWindow {
     }
 
     /// `ServerURLSetting` -- `serverUrl`.
+    #[allow(dead_code)]
     fn render_self_host(&self, _window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let stored = self.settings.server_url.clone();
         let draft = self.server_url.clone();
@@ -4406,6 +4406,7 @@ impl SettingsWindow {
         )
     }
 
+    #[allow(dead_code)]
     fn confirm_server_url(&mut self, value: String, window: &mut Window, cx: &mut Context<Self>) {
         let Some(origin) = origin_of(&value) else {
             return;

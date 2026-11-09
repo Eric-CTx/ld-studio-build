@@ -1269,11 +1269,11 @@ tagline = "几秒内录制并分享"
 title = "Instant 模式"
 
 [onboarding.modes.screenshot]
-description = "一个快捷键即可截图，添加标注和漂亮的背景，然后立即分享或复制。"
+description = "一个快捷键即可截图，添加标注和漂亮的背景，然后复制或保存到本地。"
 feature_1 = "快捷键一键截图"
 feature_2 = "标注与绘图工具"
 feature_3 = "漂亮的背景"
-feature_4 = "复制、保存或分享"
+feature_4 = "复制或保存"
 tagline = "即时截图与美化"
 title = "截图模式"
 
@@ -1282,7 +1282,7 @@ description = "在本地以完整画质录制，然后用内置编辑器添加�
 feature_1 = "完整画质本地录制"
 feature_2 = "内置编辑器与特效"
 feature_3 = "自定义背景与边距"
-feature_4 = "准备好后导出或分享"
+feature_4 = "准备好后导出到本地"
 tagline = "专业编辑工具"
 title = "Studio 模式"
 
@@ -1308,7 +1308,7 @@ title = "随时切换模式"
 click_or_press = "点击此处，或按下"
 get_started = "开始使用"
 space_key = "空格"
-tagline = "人人可用的开源屏幕分享应用。"
+tagline = "人人可用的本地录屏应用。"
 
 [menu.update]
 badge_progress = "v{version} · {percent}%"

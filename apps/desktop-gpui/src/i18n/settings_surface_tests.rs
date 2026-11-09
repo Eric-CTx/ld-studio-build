@@ -1,5 +1,20 @@
 use super::*;
 
+#[test]
+fn local_general_page_does_not_render_a_server_setting() {
+    let source = include_str!("../settings_window.rs");
+    let general = source
+        .split("fn render_general(")
+        .nth(1)
+        .unwrap()
+        .split("fn render_appearance(")
+        .next()
+        .unwrap();
+    assert!(!general.contains("render_self_host"));
+    assert!(general.contains("render_excluded_windows"));
+    assert!(general.contains("render_storage"));
+}
+
 /// Every key the settings surfaces own. The shortcut effects are pinned
 /// separately, against every combination of settings that builds them, in
 /// `settings_pages`'s `shortcut_effects_match_the_sentences_they_replaced`.

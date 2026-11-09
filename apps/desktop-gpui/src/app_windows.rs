@@ -912,6 +912,8 @@ pub(crate) fn show_main_window_after_capture_pause(cx: &mut App) {
         cx.global_mut::<AppWindows>().main_hidden_for_picker = false;
     }
     let main = cx.global::<AppWindows>().main;
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::Main, main, cx);
     let native = main
         .update(cx, |view, window, cx| {
             if resume_inputs {
@@ -1220,6 +1222,8 @@ pub fn open_settings(page: Page, cx: &mut App) {
         return;
     }
     if let Some(handle) = cx.global::<AppWindows>().settings {
+        #[cfg(target_os = "windows")]
+        protect_opened_window(OwnWindow::Settings, handle, cx);
         // `ShowCapWindow::show` reuses a live window: show, focus, and let
         // the page argument re-target it.
         let native = handle
@@ -1298,6 +1302,8 @@ pub fn open_settings(page: Page, cx: &mut App) {
     };
 
     cx.global_mut::<AppWindows>().settings = Some(handle);
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::Settings, handle, cx);
 
     // Read the native handle inside the update; act on it outside.
     let native = handle
@@ -1459,6 +1465,8 @@ pub fn open_onboarding(cx: &mut App) {
     };
 
     cx.global_mut::<AppWindows>().onboarding = Some(handle);
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::Onboarding, handle, cx);
     let native = handle
         .update(cx, |view, window, cx| {
             platform::kick_display_link(window);
@@ -1627,6 +1635,8 @@ pub fn open_mode_select(cx: &mut App) -> bool {
     };
 
     cx.global_mut::<AppWindows>().mode_select = Some(handle);
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::ModeSelect, handle, cx);
     handle
         .update(cx, |view, window, cx| {
             platform::kick_display_link(window);
@@ -1753,6 +1763,8 @@ pub fn open_teleprompter(cx: &mut App) {
     };
 
     cx.global_mut::<AppWindows>().teleprompter = Some(handle);
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::Teleprompter, handle, cx);
 
     // `commands.refreshWindowContentProtection()` on open
     // (`src/utils/teleprompter.ts:26,38,64`): a window that appears *after* the
@@ -2695,6 +2707,8 @@ fn open_overlay(
             cx.global_mut::<AppWindows>()
                 .overlays
                 .push((display.id(), handle));
+            #[cfg(target_os = "windows")]
+            protect_opened_window(OwnWindow::TargetSelect, handle, cx);
             // Only *read* the native handle while the App is borrowed; the
             // AppKit calls that move, raise and show the panel synchronously
             // re-enter gpui's own window callbacks, so they run from a fresh
@@ -2902,6 +2916,51 @@ fn content_protection_targets(rules: &[crate::store::WindowExclusion]) -> Vec<Ow
 /// protection is decided by the mode and not by the rules.
 fn camera_content_protected(mode: RecordingMode) -> bool {
     mode == RecordingMode::Studio
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn opened_window_needs_content_protection(
+    kind: OwnWindow,
+    phase: Phase,
+    mode: RecordingMode,
+    rules: &[crate::store::WindowExclusion],
+) -> bool {
+    phase != Phase::Idle
+        && match kind {
+            OwnWindow::Camera => camera_content_protected(mode),
+            OwnWindow::TargetSelect => true,
+            kind => content_protection_targets(rules).contains(&kind),
+        }
+}
+
+#[cfg(target_os = "windows")]
+fn protect_opened_window<V: 'static + gpui::Render>(
+    kind: OwnWindow,
+    handle: WindowHandle<V>,
+    cx: &mut App,
+) {
+    let session = RecordingSession::global(cx);
+    let session = session.read(cx);
+    if session.phase == Phase::Idle {
+        return;
+    }
+    let Some(mode) = session.mode() else {
+        return;
+    };
+    let rules =
+        own_window_exclusion_rules(crate::store::GeneralSettings::load().excluded_windows, mode);
+    if !opened_window_needs_content_protection(kind, session.phase, mode, &rules) {
+        return;
+    }
+    // Windows 必须在让出事件循环前补设排除，避免新窗口先被录入一帧。
+    handle
+        .update(cx, |_, window, _| {
+            if let Some(native) = platform::native_window(window) {
+                let sharing = platform::set_window_capture_hidden(&native, true);
+                tracing::info!(?kind, sharing, "新打开窗口的捕获排除");
+            }
+        })
+        .ok();
 }
 
 /// One of our windows, with everything the two mechanisms need: the canonical
@@ -4237,6 +4296,8 @@ pub fn open_camera_window(cx: &mut App) {
     match handle {
         Ok(handle) => {
             cx.global_mut::<AppWindows>().camera = Some(handle);
+            #[cfg(target_os = "windows")]
+            protect_opened_window(OwnWindow::Camera, handle, cx);
             let native = handle
                 .update(cx, |_, window, _| {
                     platform::apply_panel_behavior(
@@ -5199,6 +5260,8 @@ fn open_editor_window(
     cx.global_mut::<AppWindows>()
         .editors
         .push((key.clone(), handle));
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::Editor, handle, cx);
 
     handle
         .update(cx, |view, window, cx| {
@@ -7060,6 +7123,8 @@ fn open_controls(
     match handle {
         Ok(handle) => {
             cx.global_mut::<AppWindows>().controls = Some(handle);
+            #[cfg(target_os = "windows")]
+            protect_opened_window(OwnWindow::Controls, handle, cx);
             // Panel treatment AFTER open_window returns: inside the builder
             // closure the platform window is not finished and gpui's own
             // PopUp setup would override the level.
@@ -7261,6 +7326,8 @@ pub fn open_screenshot_editor(path: PathBuf, cx: &mut App) {
     cx.global_mut::<AppWindows>()
         .screenshot_editors
         .push((key.clone(), handle));
+    #[cfg(target_os = "windows")]
+    protect_opened_window(OwnWindow::ScreenshotEditor, handle, cx);
     handle
         .update(cx, |_, window, _| {
             platform::kick_display_link(window);
@@ -8556,6 +8623,62 @@ mod tests {
             },
         ];
         assert!(excluded_own_windows(&by_identity).is_empty());
+    }
+
+    #[test]
+    fn opened_windows_follow_recording_phase_rules_and_camera_mode() {
+        let rules = own_window_exclusion_rules(default_excluded_windows(), RecordingMode::Studio);
+        for phase in [
+            Phase::Starting,
+            Phase::Recording { paused: false },
+            Phase::Recording { paused: true },
+            Phase::Stopping,
+        ] {
+            for kind in OwnWindow::ALL {
+                let expected = match kind {
+                    OwnWindow::Camera | OwnWindow::TargetSelect => true,
+                    kind => content_protection_targets(&rules).contains(&kind),
+                };
+                assert_eq!(
+                    opened_window_needs_content_protection(
+                        kind,
+                        phase,
+                        RecordingMode::Studio,
+                        &rules
+                    ),
+                    expected,
+                    "{kind:?} / {phase:?}"
+                );
+                assert!(!opened_window_needs_content_protection(
+                    kind,
+                    Phase::Idle,
+                    RecordingMode::Studio,
+                    &rules
+                ));
+            }
+            for kind in [OwnWindow::Main, OwnWindow::Settings, OwnWindow::ModeSelect] {
+                let mut removed = rules.clone();
+                removed.retain(|rule| rule.window_title.as_deref() != Some(kind.title()));
+                assert!(!opened_window_needs_content_protection(
+                    kind,
+                    phase,
+                    RecordingMode::Studio,
+                    &removed
+                ));
+            }
+            assert!(!opened_window_needs_content_protection(
+                OwnWindow::Camera,
+                phase,
+                RecordingMode::Instant,
+                &rules
+            ));
+            assert!(opened_window_needs_content_protection(
+                OwnWindow::Camera,
+                phase,
+                RecordingMode::Studio,
+                &[]
+            ));
+        }
     }
 
     #[test]

@@ -513,16 +513,6 @@ fn main_surfaces_match_the_literals_they_replaced() {
             tr::onboarding::customize::shortcuts::description(),
             "Global hotkeys for recording, screenshots, and switching modes",
         ),
-        (tr::onboarding::customize::s3::title(), "Custom S3 Storage"),
-        (
-            tr::onboarding::customize::s3::description(),
-            "Connect your own S3-compatible bucket for full control over your recordings",
-        ),
-        (tr::onboarding::customize::domain::title(), "Custom Domain"),
-        (
-            tr::onboarding::customize::domain::description(),
-            "Use your own domain for shareable links instead of cap.so",
-        ),
         (
             tr::onboarding::customize::preferences::title(),
             "Recording Preferences",

@@ -22,7 +22,6 @@ use crate::{
 use crate::ui;
 
 mod stage;
-mod welcome_script;
 
 pub use stage::Paper;
 
@@ -815,76 +814,6 @@ fn ease_in_out(value: f32) -> f32 {
     }
 }
 
-fn welcome_script(written: f32, opacity: f32) -> impl IntoElement {
-    const FEATHER: f32 = 0.16;
-    const EDGE: f32 = 2.4;
-    const SHADOW_DROP: f32 = 2.;
-    gpui::canvas(
-        |_, _, _| {},
-        move |bounds, _, window, _| {
-            if opacity <= 0. || written <= 0. {
-                return;
-            }
-            let script = &welcome_script::WELCOME;
-            let Some((origin, scale)) = script.fit(bounds) else {
-                return;
-            };
-            let shadow_origin = (origin.0, origin.1 + SHADOW_DROP);
-            let (Some(fill), Some(edge), Some(shadow)) = (
-                script.path(origin, scale),
-                script.stroke(origin, scale, EDGE),
-                script.stroke(shadow_origin, scale, EDGE),
-            ) else {
-                return;
-            };
-            // Shadow, then the edge, then the white over it: the fill hides
-            // the inner half of every stroke, joins included.
-            let layers = [
-                (shadow, Hsla::from(rgba(0x3f5a821f))),
-                (edge, Hsla::from(rgba(0x5f7fae73))),
-                (fill.clone(), Hsla::from(rgba(0xfffffff2))),
-            ];
-            let left = f32::from(fill.bounds.left()) - EDGE;
-            let width = f32::from(fill.bounds.size.width) + 2. * EDGE;
-            let top = fill.bounds.top() - px(EDGE);
-            let height = fill.bounds.size.height + px(2. * EDGE + SHADOW_DROP);
-            let mask = |from: f32, to: f32| gpui::ContentMask {
-                bounds: gpui::Bounds {
-                    origin: gpui::point(px(left + from * width), top),
-                    size: gpui::size(px((to - from) * width), height),
-                },
-            };
-            let reach = written * (1. + FEATHER);
-            let solid = (reach - FEATHER).clamp(0., 1.);
-            let (start, end) = (solid, reach.min(1.));
-            for (path, color) in layers {
-                let color = color.opacity(opacity);
-                if solid > 0. {
-                    window.with_content_mask(Some(mask(0., solid)), |window| {
-                        window.paint_path(path.clone(), color);
-                    });
-                }
-                // Path gradients span the path's bounds clipped to the
-                // content mask, so the feather's stops run across its strip.
-                if end > start {
-                    let fade = (1. - (end - start) / FEATHER).max(0.);
-                    window.with_content_mask(Some(mask(start, end)), |window| {
-                        window.paint_path(
-                            path,
-                            linear_gradient(
-                                90.,
-                                linear_color_stop(color, 0.),
-                                linear_color_stop(color.opacity(fade), 1.),
-                            ),
-                        );
-                    });
-                }
-            }
-        },
-    )
-    .size_full()
-}
-
 fn ease_out(value: f32) -> f32 {
     1. - (1. - value).powi(3)
 }
@@ -1280,7 +1209,15 @@ impl OnboardingWindow {
                     .mb(px(18.))
                     .w(px(380.))
                     .h(px(96.))
-                    .child(welcome_script(written, title_opacity)),
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .opacity(written * title_opacity)
+                    .child(
+                        copy("欢迎使用", 58., ink)
+                            .locale_font()
+                            .font_weight(FontWeight::LIGHT),
+                    ),
             )
             .child(
                 copy(tr::onboarding::welcome::tagline(), 22., ink.opacity(0.75))
@@ -1599,14 +1536,6 @@ impl OnboardingWindow {
                             (
                                 tr::onboarding::customize::shortcuts::title(),
                                 tr::onboarding::customize::shortcuts::description(),
-                            ),
-                            (
-                                tr::onboarding::customize::s3::title(),
-                                tr::onboarding::customize::s3::description(),
-                            ),
-                            (
-                                tr::onboarding::customize::domain::title(),
-                                tr::onboarding::customize::domain::description(),
                             ),
                             (
                                 tr::onboarding::customize::preferences::title(),
